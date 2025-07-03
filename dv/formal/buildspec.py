@@ -104,8 +104,8 @@ if len(sys.argv) > 1:
             "sail_reached_unreachable = 0;",
             "begin sail_reached_unreachable = 0; sail_reached_unreachable_loc = -1; end"
         ).replace(
-            "bit sail_reached_unreachable;",
-            "bit sail_reached_unreachable;\n\tlogic [31:0] sail_reached_unreachable_loc;"
+            "logic sail_reached_unreachable;",
+            "logic sail_reached_unreachable;\n\tlogic [31:0] sail_reached_unreachable_loc;"
         )
         with open("build/ibexspec.sv", "w") as f:
             f.write(c)

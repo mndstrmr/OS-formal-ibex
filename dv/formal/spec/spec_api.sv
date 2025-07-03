@@ -99,7 +99,7 @@ module spec_api #(
     output logic [3:0] mem_write_snd_be_o
 );
 
-bit rX_sail_invoke[2];
+logic rX_sail_invoke[2];
 logic [31:0] rX_sail_invoke_ret[2];
 logic [63:0] rX_sail_invoke_arg_0[2];
 assign rx_a_en_o = rX_sail_invoke[0];

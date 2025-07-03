@@ -125,17 +125,17 @@ ibex_top #(
 
 // Core constraints
 // 1. We do not allow going into debug mode
-NotDebug: assume property (!ibex_top_i.u_ibex_core.debug_mode & !debug_req_i);
+// NotDebug: assume property (!ibex_top_i.u_ibex_core.debug_mode & !debug_req_i);
 // 2. The boot address is constant
-ConstantBoot: assume property (boot_addr_i == $past(boot_addr_i));
+// ConstantBoot: assume property (boot_addr_i == 32'h0);
 // 3. Always fetch enable
-FetchEnable: assume property (fetch_enable_i == IbexMuBiOn);
+// FetchEnable: assume property (fetch_enable_i == IbexMuBiOn);
 // 4. Never try to sleep if we couldn't ever wake up
-WFIStart: assume property (`IDC.ctrl_fsm_cs == SLEEP |-> (
-                                                          `CSR.mie_q.irq_software |
-                                                          `CSR.mie_q.irq_timer |
-                                                          `CSR.mie_q.irq_external
-                                                         ));
+// WFIStart: assume property (`IDC.ctrl_fsm_cs == SLEEP |-> (
+                                                         //  `CSR.mie_q.irq_software |
+                                                         //  `CSR.mie_q.irq_timer |
+                                                         //  `CSR.mie_q.irq_external
+                                                         // ));
 // See protocol/* for further assumptions
 
 ///////////////////////////////// Declarations /////////////////////////////////

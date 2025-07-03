@@ -14,13 +14,13 @@ NoFastIRQ: assume property (~(|irq_fast_i));
 
 // IRQs must remain active until they are cleared by some MMIO memory request
 // The alternative is that IRQs disappear after just one cycle or something
-MIPFair: assume property (
-	(|`CSR.mip) |=>
-		$past(`CSR.mip) == ($past(`CSR.mip) & `CSR.mip) || data_gnt_i
-);
+// MIPFair: assume property (
+// 	(|`CSR.mip) |=>
+// 		$past(`CSR.mip) == ($past(`CSR.mip) & `CSR.mip) || data_gnt_i
+// );
 
 `define WFI_BOUND 20
 // If we are asleep we must eventually wake up. This is validated by the WFIStart assumption,
 // which ensures that this is actually possible. We make the time bounded instead of s_eventually
 // for conclusivity purposes. This can be commented out if you don't care about liveness.
-WFIWakeUp: assume property (`IDC.ctrl_fsm_cs == SLEEP |-> ##[0:`WFI_BOUND] `IDC.irq_pending_i);
+// WFIWakeUp: assume property (`IDC.ctrl_fsm_cs == SLEEP |-> ##[0:`WFI_BOUND] `IDC.irq_pending_i);

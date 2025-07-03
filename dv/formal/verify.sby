@@ -1,0 +1,18 @@
+[tasks]
+main prove
+
+[options]
+prove:
+mode prove
+--
+
+[engines]
+smtbmc boolector
+
+[script]
+plugin -i slang.so
+read_slang --top top -DSYNTHESIS -f slang.scr --single-unit
+
+[files]
+slang.scr
+/home/louis-emile/yosys-slang/build/slang.so

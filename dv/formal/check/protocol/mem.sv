@@ -43,13 +43,13 @@ interface mem_assume_t(
     MemGntOnRequest: assume property (@(posedge clk_i) ~req_o |-> ~gnt_i);
 
     // Grants must respond within TIME_LIMIT cycles
-    GntBound: assume property (@(posedge clk_i) req_o |-> ##[0:`TIME_LIMIT] gnt_i);
+    // GntBound: assume property (@(posedge clk_i) req_o |-> ##[0:`TIME_LIMIT] gnt_i);
 
     // RValid takes no more than TIME_LIMIT cycles
-    MemValidTimer: assume property (
-      @(posedge clk_i)
-      outstanding_reqs != 0 |-> ##[0:`TIME_LIMIT] rvalid_i
-    );
+    // MemValidTimer: assume property (
+    //   @(posedge clk_i)
+    //   outstanding_reqs != 0 |-> ##[0:`TIME_LIMIT] rvalid_i
+    // );
 
     // Responses have to come eventually, implied by the above bounds so removed
     // MemGntEventually: assume property (@(posedge clk_i) req_o |-> s_eventually gnt_i);

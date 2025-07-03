@@ -45,10 +45,10 @@ LoadMemLateRespSecond: assume property (
 
 // The spec read data cannot change while an instruction is running, only when there is a new one
 // Note these values are undriven, they are not from the spec as the name would suggest
-SpecReadDataKeep: assume property (~instr_will_progress |=>
-    spec_mem_read_fst_rdata == $past(spec_mem_read_fst_rdata) &&
-    spec_mem_read_snd_rdata == $past(spec_mem_read_snd_rdata)
-);
+// SpecReadDataKeep: assume property (~instr_will_progress |=>
+//     spec_mem_read_fst_rdata == $past(spec_mem_read_fst_rdata) &&
+//     spec_mem_read_snd_rdata == $past(spec_mem_read_snd_rdata)
+// );
 
 // Tracks what requests/grants have been since instr_will_progress (and thus spec_en).
 // It's not dependent on any internal signal besides instr_will_progress, which implies
@@ -60,7 +60,10 @@ assign mem_req_fst_d = data_req_o & ~mem_gnt_fst_q;
 assign mem_req_snd_d = data_req_o & mem_gnt_fst_q;
 
 always @(posedge clk_i or negedge rst_ni) begin
-    if (~rst_ni | instr_will_progress) begin
+    if (~rst_ni) begin
+        mem_gnt_fst_q <= 1'b0;
+        mem_gnt_snd_q <= 1'b0;
+    end else if (instr_will_progress) begin
         mem_gnt_fst_q <= 1'b0;
         mem_gnt_snd_q <= 1'b0;
     end else begin

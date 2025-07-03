@@ -25,16 +25,16 @@ assign ex_err = `IDC.exc_req_d;
 assign ex_kill = `ID.wb_exception | ~`ID.controller_run;
 // Note that this only kills instructions because e.g. of a jump ahead of it or an exception
 
-assign exc_finishing = `IDC.ctrl_fsm_cs == `ID.controller_i.FLUSH;
-assign wbexc_handling_irq = `IDC.ctrl_fsm_cs == `ID.controller_i.IRQ_TAKEN;
+assign exc_finishing = `IDC.ctrl_fsm_cs == FLUSH;
+assign wbexc_handling_irq = `IDC.ctrl_fsm_cs == IRQ_TAKEN;
 
 assign wb_finishing = wbexc_is_wfi? wfi_will_finish:`CR.instr_done_wb;
 
-assign wfi_will_finish = `IDC.ctrl_fsm_cs == `ID.controller_i.FLUSH;
+assign wfi_will_finish = `IDC.ctrl_fsm_cs == FLUSH;
 
 assign wbexc_err =  wbexc_ex_err |
                     `IDC.wb_exception_o |
-                    ((`IDC.ctrl_fsm_cs == `ID.controller_i.FLUSH) & ~wbexc_csr_pipe_flush);
+                    ((`IDC.ctrl_fsm_cs == FLUSH) & ~wbexc_csr_pipe_flush);
                     // CSR pipe flushes don't count as exceptions
 
 assign wbexc_finishing =
@@ -51,7 +51,7 @@ always_comb begin
 
     ex_has_branched_d = (ex_has_branched_d | `IF.branch_req) &&
                         ~ex_kill &&
-                        (`IDC.ctrl_fsm_cs == `IDC.DECODE);
+                        (`IDC.ctrl_fsm_cs == DECODE);
 end
 
 always @(posedge clk_i or negedge rst_ni) begin
