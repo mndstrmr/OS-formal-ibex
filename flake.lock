@@ -30,11 +30,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1717050755,
-        "narHash": "sha256-C9IEHABulv2zEDFA+Bf0E1nmfN4y6MIUe5eM2RCrDC0=",
+        "lastModified": 1750314194,
+        "narHash": "sha256-SjpXWEeB+UIMzuCAF94PuyAXpJdnBLF45JvI6o4wKIU=",
         "owner": "tweag",
         "repo": "gomod2nix",
-        "rev": "31b6d2e40b36456e792cd6cf50d5a8ddd2fa59a1",
+        "rev": "a5f75f563748599d448a4a076816041d7b0fc07e",
         "type": "github"
       },
       "original": {
@@ -71,11 +71,11 @@
     "lowrisc_sail": {
       "flake": false,
       "locked": {
-        "lastModified": 1745587367,
-        "narHash": "sha256-VbUampJQcjgnCi/9rRSC0V13i/MLBS75sfRrrc/HLpc=",
+        "lastModified": 1751547289,
+        "narHash": "sha256-koegNBi/yLt/nJmR1a0Rb9KY/09FDNznhrHdYh/oQZ0=",
         "owner": "lowrisc",
         "repo": "sail",
-        "rev": "4832414fca03b3103121a15a021939654050159b",
+        "rev": "d3e8681ac67423fa24cb05c50b44cf107208d85a",
         "type": "github"
       },
       "original": {
@@ -100,6 +100,25 @@
         "ref": "81a266b6f65365b34180af7b91708265da653878",
         "repo": "sail-riscv",
         "type": "github"
+      }
+    },
+    "lowrisc_yosys_slang": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1751471570,
+        "narHash": "sha256-a7cVfKjzJ0s+AcOQjDUYFxg8ImP2TMTmSuslPzTKVkM=",
+        "ref": "formal",
+        "rev": "ea712b3ed9b1052a2e41561af0c6e310f81b6f08",
+        "revCount": 492,
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/mndstrmr/yosys-slang"
+      },
+      "original": {
+        "ref": "formal",
+        "submodules": true,
+        "type": "git",
+        "url": "https://github.com/mndstrmr/yosys-slang"
       }
     },
     "mkshell-minimal": {
@@ -162,11 +181,26 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1724316499,
-        "narHash": "sha256-Qb9MhKBUTCfWg/wqqaxt89Xfi6qTD3XpTzQ9eXi3JmE=",
+        "lastModified": 1751211869,
+        "narHash": "sha256-1Cu92i1KSPbhPCKxoiVG5qnoRiKTgR5CcGSRyLpOd7Y=",
         "owner": "NixOS",
         "repo": "nixpkgs",
-        "rev": "797f7dc49e0bc7fab4b57c021cdf68f595e47841",
+        "rev": "b43c397f6c213918d6cfe6e3550abfe79b5d1c51",
+        "type": "github"
+      },
+      "original": {
+        "id": "nixpkgs",
+        "ref": "nixos-25.05",
+        "type": "indirect"
+      }
+    },
+    "nixpkgs-old": {
+      "locked": {
+        "lastModified": 1735563628,
+        "narHash": "sha256-OnSAY7XDSx7CtDoqNh8jwVwh4xNL/2HaJxGjryLWzX8=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "b134951a4c9f3c995fd7be05f3243f8ecd65d798",
         "type": "github"
       },
       "original": {
@@ -240,11 +274,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1723038779,
-        "narHash": "sha256-L/toJC6lyeVJy2Uswse8aCrhdt0mTxDfn8t0NpNVn/I=",
+        "lastModified": 1751533427,
+        "narHash": "sha256-FxteUYELJoRcWgQxvpWiDF06XnyZhwq7fi1n923RsPc=",
         "owner": "mndstrmr",
         "repo": "psgen",
-        "rev": "2d0c1e0690cf6c3b9b1bf4f51bccab4698f4e21f",
+        "rev": "7162001f16c50039cebac1ba6c9979aa739fdf9a",
         "type": "github"
       },
       "original": {
@@ -259,8 +293,10 @@
         "lowrisc-nix": "lowrisc-nix",
         "lowrisc_sail": "lowrisc_sail",
         "lowrisc_sail_riscv": "lowrisc_sail_riscv",
+        "lowrisc_yosys_slang": "lowrisc_yosys_slang",
         "mkshell-minimal": "mkshell-minimal",
         "nixpkgs": "nixpkgs",
+        "nixpkgs-old": "nixpkgs-old",
         "poetry2nix": "poetry2nix_2",
         "psgen": "psgen"
       }

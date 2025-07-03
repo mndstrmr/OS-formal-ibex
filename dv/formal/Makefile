@@ -38,7 +38,7 @@ sv:
 	mkdir -p build
 	python3 buildspec.py header > build/ibexspec_instrs.sv
 	cd build && $(SAIL) $(SAIL_SRCS) $(SAIL_EXTRA_SRCS) $(SAIL_SV_FLAGS) `cd .. && python3 buildspec.py unreachables` -o ibexspec
-	python3 spec/fix_pmp_bug.py
+	python3 spec/fix_bugs.py
 	python3 buildspec.py unreachable_loc_hack
 
 .PHONY: psgen
@@ -49,6 +49,10 @@ psgen:
 .PHONY: jg
 jg: fusesoc psgen sv
 	jg verify.tcl -allow_unsupported_OS -acquire_proj
+
+.PHONY: oss-dev
+oss-dev:
+	yosys -m $(LOWRISC_YOSYS_SLANG) -p 'read_slang --top top -DSYNTHESIS -f slang.scr --single-unit'
 
 # The following default target is intended for regressions / unattended runs.
 .PHONY: all
