@@ -47,7 +47,7 @@ lemma ibex
   DecompressionMatchWbexc: have (wbexc_exists & ~wbexc_illegal & ~wbexc_compressed_illegal |-> decompressed_instr_2 == wbexc_decompressed_instr)
 
   HasCompressed: have (`CR.instr_valid_id |-> ex_has_compressed_instr)
-  # LSUInstrStable: have (`LSU.ls_fsm_cs != 0 |-> $stable(`CR.instr_rdata_id))
+  LSUInstrStable: have (`LSU.ls_fsm_cs != 0 |-> $stable(`CR.instr_rdata_id))
 
   NoneIdleIsDecode: have (`LSU.ls_fsm_cs != 0 |-> `IDC.ctrl_fsm_cs == 5)
   LSUFinishWaitRvalidMisGntsDone: have (`LSU.ls_fsm_cs == 4 && data_rvalid_i |-> instr_will_progress)
@@ -72,10 +72,10 @@ lemma ibex
   CtrlWbexc: have (wbexc_exists |-> `IDC.ctrl_fsm_cs == DECODE || `IDC.ctrl_fsm_cs == FLUSH)
   ProgressDecode: have (instr_will_progress |-> `IDC.ctrl_fsm_cs == DECODE)
 
-  # BranchedProg: have (ex_has_branched_d & ~instr_will_progress |=> ex_has_branched_d | `IDC.wb_exception_o)
+  BranchedProg: have (ex_has_branched_d & ~instr_will_progress |=> ex_has_branched_d | `IDC.wb_exception_o)
 
-  # IDCFsmAny: have (`IDC.ctrl_fsm_cs inside {RESET, BOOT_SET, WAIT_SLEEP, SLEEP, FIRST_FETCH, DECODE, IRQ_TAKEN, FLUSH})
-  # IDCFsmNotBoot: have (##3 ~(`IDC.ctrl_fsm_cs inside {RESET, BOOT_SET}))
+  IDCFsmAny: have (`IDC.ctrl_fsm_cs inside {RESET, BOOT_SET, WAIT_SLEEP, SLEEP, FIRST_FETCH, DECODE, IRQ_TAKEN, FLUSH})
+  IDCFsmNotBoot: have (##3 ~(`IDC.ctrl_fsm_cs inside {RESET, BOOT_SET}))
 
   MemInstrEx: have (`LSU.ls_fsm_cs != `LSU.IDLE |-> ex_is_mem_instr)
   MemInstrWbLoad: have (`WB.outstanding_load_wb_o |-> wbexc_is_load_instr)
