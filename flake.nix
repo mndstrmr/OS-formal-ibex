@@ -185,6 +185,7 @@
                 yices
                 z3
                 avy
+                gtkwave # not stricly necesssary, but definitely useful for a dev shell
                 # ric3
               ]);
               shellHook = exports + dev_msg + ''

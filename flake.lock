@@ -71,11 +71,11 @@
     "lowrisc_sail": {
       "flake": false,
       "locked": {
-        "lastModified": 1751547289,
-        "narHash": "sha256-koegNBi/yLt/nJmR1a0Rb9KY/09FDNznhrHdYh/oQZ0=",
+        "lastModified": 1751880045,
+        "narHash": "sha256-l42K5y+aT/Wy8mwE5E5Q8I98InKYINKZoVMBH/yqwnk=",
         "owner": "lowrisc",
         "repo": "sail",
-        "rev": "d3e8681ac67423fa24cb05c50b44cf107208d85a",
+        "rev": "0a978e03f30059f0f084bf0f70c2c2bbf7cd561a",
         "type": "github"
       },
       "original": {
@@ -105,11 +105,11 @@
     "lowrisc_yosys_slang": {
       "flake": false,
       "locked": {
-        "lastModified": 1751471570,
-        "narHash": "sha256-a7cVfKjzJ0s+AcOQjDUYFxg8ImP2TMTmSuslPzTKVkM=",
+        "lastModified": 1751875888,
+        "narHash": "sha256-Pukt7b75I2aMbKYfioNUblrxZyMMlb8kZlahpmxQR1M=",
         "ref": "formal",
-        "rev": "ea712b3ed9b1052a2e41561af0c6e310f81b6f08",
-        "revCount": 492,
+        "rev": "a0d27d64663942bcc34227293a91bb9a1dcc1fa8",
+        "revCount": 493,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/mndstrmr/yosys-slang"
@@ -274,11 +274,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1751533427,
-        "narHash": "sha256-FxteUYELJoRcWgQxvpWiDF06XnyZhwq7fi1n923RsPc=",
+        "lastModified": 1751876858,
+        "narHash": "sha256-2+FH+YxNzfjCxSe61UKNUoCdY09YvXxY5RguOUgn24s=",
         "owner": "mndstrmr",
         "repo": "psgen",
-        "rev": "7162001f16c50039cebac1ba6c9979aa739fdf9a",
+        "rev": "a0bfcfc99c01ce7b0839dc5988cc2e3227877f75",
         "type": "github"
       },
       "original": {

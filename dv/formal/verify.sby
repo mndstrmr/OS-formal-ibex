@@ -8,11 +8,15 @@ mode prove
 
 [engines]
 smtbmc boolector
+smtbmc --unroll yices
+aiger avy
+aiger rIC3
+abc pdr
 
 [script]
 plugin -i slang.so
-read_slang --top top -DSYNTHESIS -f slang.scr --single-unit
+read_slang --top top -DSYNTHESIS -DSYMBIOSIS -f slang.scr --single-unit
 
 [files]
 slang.scr
-/home/louis-emile/yosys-slang/build/slang.so
+$LOWRISC_YOSYS_SLANG

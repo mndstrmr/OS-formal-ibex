@@ -9,8 +9,8 @@ The following give the protocol that IRQs must follow.
 */
 
 // The Sail does not specify either of these
-NoNMI: assume property (~irq_nm_i);
-NoFastIRQ: assume property (~(|irq_fast_i));
+NoNMI: assume property (@(posedge clk_i) ~irq_nm_i);
+NoFastIRQ: assume property (@(posedge clk_i) ~(|irq_fast_i));
 
 // IRQs must remain active until they are cleared by some MMIO memory request
 // The alternative is that IRQs disappear after just one cycle or something

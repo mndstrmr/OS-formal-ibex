@@ -21,92 +21,92 @@ lemma ibex
   NoEnterDebugMode: have (~`IDC.enter_debug_mode)
   IfBusErr: have (`IF.if_id_pipe_reg_we |-> ~`IF.if_instr_bus_err)
 
-  # WfiKill: have (wbexc_exists & wbexc_is_wfi |-> ex_kill)
-  # ErrKill: have (wbexc_exists & wbexc_err |-> ex_kill)
+  WfiKill: have (wbexc_exists & wbexc_is_wfi |-> ex_kill)
+  ErrKill: have (wbexc_exists & wbexc_err |-> ex_kill)
 
-  # ReqRequiresInstr: have (data_req_o |-> ex_has_compressed_instr)
-  # ReqRequiresNotIllegal: have (data_req_o |->  ~`CR.illegal_insn_id & ~`CR.illegal_c_insn_id)
+  ReqRequiresInstr: have (data_req_o |-> ex_has_compressed_instr)
+  ReqRequiresNotIllegal: have (data_req_o |->  ~`CR.illegal_insn_id & ~`CR.illegal_c_insn_id)
 
-  # AluInstrMatch: have (`ID.instr_valid_i |-> `CR.instr_rdata_id == `CR.instr_rdata_alu_id)
+  AluInstrMatch: have (`ID.instr_valid_i |-> `CR.instr_rdata_id == `CR.instr_rdata_alu_id)
 
-  # IdExNotReq: have (~ex_is_mem_instr -> ~data_req_o)
-  # IdExNotMemMuteIncr: have (`CR.instr_valid_id & ~ex_is_mem_instr -> ~`ID.lsu_addr_incr_req_i & ~`ID.lsu_req_done_i)
-  # ExecNoSpecialReq: have (`ID.instr_executing & ~instr_will_progress |-> ~`IDC.special_req)
-  # StallIdFSM1: have (`ID.instr_executing && `ID.id_fsm_d != 0 |-> ~instr_will_progress)
+  IdExNotReq: have (~ex_is_mem_instr -> ~data_req_o)
+  IdExNotMemMuteIncr: have (`CR.instr_valid_id & ~ex_is_mem_instr -> ~`ID.lsu_addr_incr_req_i & ~`ID.lsu_req_done_i)
+  ExecNoSpecialReq: have (`ID.instr_executing & ~instr_will_progress |-> ~`IDC.special_req)
+  StallIdFSM1: have (`ID.instr_executing && `ID.id_fsm_d != 0 |-> ~instr_will_progress)
 
   # WbexcErrMonotonic: have (wbexc_exists & wbexc_err & ~instr_will_progress & ~wbexc_finishing |=> wbexc_err)
 
-  # NonCompressedMatch: have (wbexc_finishing && wbexc_instr[1:0] == 2'b11 |-> wbexc_instr == wbexc_decompressed_instr)
-  # CompressedMatch: have (ex_has_compressed_instr |-> ex_compressed_instr[15:0] == `CR.instr_rdata_c_id)
+  NonCompressedMatch: have (wbexc_finishing && wbexc_instr[1:0] == 2'b11 |-> wbexc_instr == wbexc_decompressed_instr)
+  CompressedMatch: have (ex_has_compressed_instr |-> ex_compressed_instr[15:0] == `CR.instr_rdata_c_id)
 
   # PostFlushNoInstr: have (`IDC.ctrl_fsm_cs == FLUSH |=> ~`CR.instr_valid_id)
 
-  # DecompressionIllegalIdEx: have (ex_has_compressed_instr |-> decompressed_instr_illegal == `CR.illegal_c_insn_id)
-  # DecompressionMatchIdEx: have (ex_has_compressed_instr & ~`CR.illegal_insn_id & ~`CR.illegal_c_insn_id |-> decompressed_instr == `CR.instr_rdata_id)
-  # DecompressionIllegalWbexc: have (wbexc_exists |-> decompressed_instr_illegal_2 == wbexc_compressed_illegal)
-  # DecompressionMatchWbexc: have (wbexc_exists & ~wbexc_illegal & ~wbexc_compressed_illegal |-> decompressed_instr_2 == wbexc_decompressed_instr)
+  DecompressionIllegalIdEx: have (ex_has_compressed_instr |-> decompressed_instr_illegal == `CR.illegal_c_insn_id)
+  DecompressionMatchIdEx: have (ex_has_compressed_instr & ~`CR.illegal_insn_id & ~`CR.illegal_c_insn_id |-> decompressed_instr == `CR.instr_rdata_id)
+  DecompressionIllegalWbexc: have (wbexc_exists |-> decompressed_instr_illegal_2 == wbexc_compressed_illegal)
+  DecompressionMatchWbexc: have (wbexc_exists & ~wbexc_illegal & ~wbexc_compressed_illegal |-> decompressed_instr_2 == wbexc_decompressed_instr)
 
-  # HasCompressed: have (`CR.instr_valid_id |-> ex_has_compressed_instr)
+  HasCompressed: have (`CR.instr_valid_id |-> ex_has_compressed_instr)
   # LSUInstrStable: have (`LSU.ls_fsm_cs != 0 |-> $stable(`CR.instr_rdata_id))
 
-  # NoneIdleIsDecode: have (`LSU.ls_fsm_cs != 0 |-> `IDC.ctrl_fsm_cs == 5)
-  # LSUFinishWaitRvalidMisGntsDone: have (`LSU.ls_fsm_cs == 4 && data_rvalid_i |-> instr_will_progress)
-  # LSUFinishWaitRvalidMis: have (`LSU.ls_fsm_cs == 2 && data_rvalid_i && data_gnt_i |-> instr_will_progress)
-  # LSUFinishWaitGnt: have (`LSU.ls_fsm_cs == 3 && data_gnt_i |-> instr_will_progress)
-  # LSUFinishFast: have (`LSU.ls_fsm_cs == 0 && data_gnt_i && `LSU.ls_fsm_ns == 0 |-> instr_will_progress)
+  NoneIdleIsDecode: have (`LSU.ls_fsm_cs != 0 |-> `IDC.ctrl_fsm_cs == 5)
+  LSUFinishWaitRvalidMisGntsDone: have (`LSU.ls_fsm_cs == 4 && data_rvalid_i |-> instr_will_progress)
+  LSUFinishWaitRvalidMis: have (`LSU.ls_fsm_cs == 2 && data_rvalid_i && data_gnt_i |-> instr_will_progress)
+  LSUFinishWaitGnt: have (`LSU.ls_fsm_cs == 3 && data_gnt_i |-> instr_will_progress)
+  LSUFinishFast: have (`LSU.ls_fsm_cs == 0 && data_gnt_i && `LSU.ls_fsm_ns == 0 |-> instr_will_progress)
 
-  # SndGntReqFstGnt: have (mem_gnt_snd_d |-> mem_gnt_fst_q)
+  SndGntReqFstGnt: have (mem_gnt_snd_d |-> mem_gnt_fst_q)
 
-  # WBOutstandingNoReq: have (outstanding_mem & ~`LSU.lsu_resp_valid_o |-> ~data_req_o)
+  WBOutstandingNoReq: have (outstanding_mem & ~`LSU.lsu_resp_valid_o |-> ~data_req_o)
 
-  # NotIdleReqDec: have (`LSU.ls_fsm_cs != `LSU.IDLE |-> `ID.lsu_req_dec)
-  # NotIdleNoExErr: have (`LSU.ls_fsm_cs != `LSU.IDLE |-> ~ex_err)
+  NotIdleReqDec: have (`LSU.ls_fsm_cs != `LSU.IDLE |-> `ID.lsu_req_dec)
+  NotIdleNoExErr: have (`LSU.ls_fsm_cs != `LSU.IDLE |-> ~ex_err)
 
-  # ProgressNoWbStall: have (instr_will_progress |-> ~`IDC.stall_wb_i)
+  ProgressNoWbStall: have (instr_will_progress |-> ~`IDC.stall_wb_i)
 
-  # NoStoreWb: have (`WBG.wb_instr_type_q == WB_INSTR_STORE |-> ~`WB.rf_we_wb_o)
-  # WbInstrDefined: have (`WBG.wb_valid_q |-> `WBG.wb_instr_type_q != 2'b11)
+  NoStoreWb: have (`WBG.wb_instr_type_q == WB_INSTR_STORE |-> ~`WB.rf_we_wb_o)
+  WbInstrDefined: have (`WBG.wb_valid_q |-> `WBG.wb_instr_type_q != 2'b11)
 
-  # RfWriteWb: have (`CR.rf_write_wb & wbexc_finishing |-> `WB.rf_we_wb_o)
+  RfWriteWb: have (`CR.rf_write_wb & wbexc_finishing |-> `WB.rf_we_wb_o)
 
-  # CtrlWbexc: have (wbexc_exists |-> `IDC.ctrl_fsm_cs == DECODE || `IDC.ctrl_fsm_cs == FLUSH)
-  # ProgressDecode: have (instr_will_progress |-> `IDC.ctrl_fsm_cs == DECODE)
+  CtrlWbexc: have (wbexc_exists |-> `IDC.ctrl_fsm_cs == DECODE || `IDC.ctrl_fsm_cs == FLUSH)
+  ProgressDecode: have (instr_will_progress |-> `IDC.ctrl_fsm_cs == DECODE)
 
   # BranchedProg: have (ex_has_branched_d & ~instr_will_progress |=> ex_has_branched_d | `IDC.wb_exception_o)
 
   # IDCFsmAny: have (`IDC.ctrl_fsm_cs inside {RESET, BOOT_SET, WAIT_SLEEP, SLEEP, FIRST_FETCH, DECODE, IRQ_TAKEN, FLUSH})
   # IDCFsmNotBoot: have (##3 ~(`IDC.ctrl_fsm_cs inside {RESET, BOOT_SET}))
 
-  # MemInstrEx: have (`LSU.ls_fsm_cs != `LSU.IDLE |-> ex_is_mem_instr)
-  # MemInstrWbLoad: have (`WB.outstanding_load_wb_o |-> wbexc_is_load_instr)
-  # MemInstrWbStore: have (`WB.outstanding_store_wb_o |-> wbexc_is_store_instr)
-  # MemClockEn: have (`LSU.ls_fsm_cs != `LSU.IDLE |-> ibex_top_i.core_busy_q)
+  MemInstrEx: have (`LSU.ls_fsm_cs != `LSU.IDLE |-> ex_is_mem_instr)
+  MemInstrWbLoad: have (`WB.outstanding_load_wb_o |-> wbexc_is_load_instr)
+  MemInstrWbStore: have (`WB.outstanding_store_wb_o |-> wbexc_is_store_instr)
+  MemClockEn: have (`LSU.ls_fsm_cs != `LSU.IDLE |-> ibex_top_i.core_busy_q)
 
-  # ClockEn: have (instr_will_progress |-> ibex_top_i.clock_en)
-  # EnWbProgress: have (`WB.en_wb_i |-> instr_will_progress)
-  # DoneFin: have (`WBG.wb_done & `WBG.wb_valid_q & ~wbexc_err |-> wbexc_finishing)
-  # ValidExists: have (`WBG.wb_valid_q |-> wbexc_exists)
+  ClockEn: have (instr_will_progress |-> ibex_top_i.clock_en)
+  EnWbProgress: have (`WB.en_wb_i |-> instr_will_progress)
+  DoneFin: have (`WBG.wb_done & `WBG.wb_valid_q & ~wbexc_err |-> wbexc_finishing)
+  ValidExists: have (`WBG.wb_valid_q |-> wbexc_exists)
 
-  # UnCheckableNoPresent: have (wbexc_exists & `ISS_CSR & ~wbexc_is_checkable_csr |-> ~has_spec_past)
+  UnCheckableNoPresent: have (wbexc_exists & `IS_CSR & ~wbexc_is_checkable_csr |-> ~has_spec_past)
 
-  # MemInstrWbWrite: have (
-  #   wbexc_exists & wbexc_is_store_instr & ~wbexc_err |->
-  #   ~`WBG.rf_we_wb_q & (`WBG.wb_instr_type_q != WB_INSTR_LOAD)
-  # )
-  # ValidToBranch: have (ex_has_branched_d |-> `CR.instr_valid_id)
+  MemInstrWbWrite: have (
+    wbexc_exists & wbexc_is_store_instr & ~wbexc_err |->
+    ~`WBG.rf_we_wb_q & (`WBG.wb_instr_type_q != WB_INSTR_LOAD)
+  )
+  ValidToBranch: have (ex_has_branched_d |-> `CR.instr_valid_id)
 
-  # LsuWeq: block
-  #   Ex: have (`LSU.ls_fsm_cs != `LSU.IDLE && mem_gnt_fst_q |-> ex_is_store_instr == `LSU.data_we_q)
-  #   /
-  #   Wb: have (outstanding_mem |-> wbexc_is_store_instr == `LSU.data_we_q)
+  LsuWeq: block
+    Ex: have (`LSU.ls_fsm_cs != `LSU.IDLE && mem_gnt_fst_q |-> ex_is_store_instr == `LSU.data_we_q)
+    # /
+    # Wb: have (outstanding_mem |-> wbexc_is_store_instr == `LSU.data_we_q)
 
-  # block
-  #   LSUEmpty: have (`LSU.ls_fsm_cs != `LSU.IDLE |-> ~wbexc_exists & ~ex_kill)
-  #   /
-  #   LSUEnd: have (`LSU.lsu_req_done_o |-> instr_will_progress)
+  block
+    LSUEmpty: have (`LSU.ls_fsm_cs != `LSU.IDLE |-> ~wbexc_exists & ~ex_kill)
+    # /
+    # LSUEnd: have (`LSU.lsu_req_done_o |-> instr_will_progress)
 
-  # block
-  #   NoFinishingIRQ: have (wbexc_exists |-> ~wbexc_handling_irq)
+  block
+    NoFinishingIRQ: have (wbexc_exists |-> ~wbexc_handling_irq)
   #   /
   #   SpecPastReg: have (wbexc_exists & wbexc_post_wX_en |-> spec_past_regs[wbexc_post_wX_addr] == wbexc_post_wX)
   #   SpecPastWbexc:

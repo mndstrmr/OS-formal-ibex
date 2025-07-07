@@ -29,17 +29,17 @@ assign early_resp = data_rvalid_i & ~outstanding_resp;
 assign late_resp = data_rvalid_i & outstanding_resp;
 
 // If we receive an early response, give it the data sent to the spec directly
-LoadMemEarlyResp: assume property (
+LoadMemEarlyResp: assume property ( @(posedge clk_i)
     early_resp |-> data_rdata_i == spec_mem_read_fst_rdata
 );
 
 // If we have a late response, and this is the first response send the low spec data
-LoadMemLateRespFirst: assume property (
+LoadMemLateRespFirst: assume property ( @(posedge clk_i)
     late_resp & ~wbexc_mem_had_snd_req |-> data_rdata_i == wbexc_spec_mem_read_fst_rdata
 );
 
 // If we have a late response, and this is the second response, send the high spec data
-LoadMemLateRespSecond: assume property (
+LoadMemLateRespSecond: assume property ( @(posedge clk_i)
     late_resp & wbexc_mem_had_snd_req |-> data_rdata_i == wbexc_spec_mem_read_snd_rdata
 );
 

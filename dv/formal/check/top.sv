@@ -44,7 +44,12 @@ module top import ibex_pkg::*; #(
 ) (
   // Clock and Reset
   input  logic                         clk_i,
+
+  // Symbiosis doesn't really have any knowledge or understanding of reset signals,
+  // so we implement them ourselves (see below).
+  `ifndef SYMBIOSIS
   input  logic                         rst_ni,
+  `endif
 
   input  logic                         test_en_i,     // enable all clock gates for testing
   input  prim_ram_1p_pkg::ram_1p_cfg_t ram_cfg_i,
@@ -105,6 +110,13 @@ module top import ibex_pkg::*; #(
   input logic                          scan_rst_ni
 );
 
+// Create our reset signal for symbiosis
+`ifdef SYMBIOSIS
+logic rst_ni;
+initial rst_ni = 1'b0;
+always @(posedge clk_i) rst_ni = 1'b1;
+`endif
+
 localparam logic [31:0] CSR_MVENDORID_VALUE = 32'b0;
 localparam logic [31:0] CSR_MIMPID_VALUE = 32'b0;
 
@@ -125,17 +137,17 @@ ibex_top #(
 
 // Core constraints
 // 1. We do not allow going into debug mode
-// NotDebug: assume property (!ibex_top_i.u_ibex_core.debug_mode & !debug_req_i);
+NotDebug: assume property (@(posedge clk_i) !ibex_top_i.u_ibex_core.debug_mode & !debug_req_i);
 // 2. The boot address is constant
-// ConstantBoot: assume property (boot_addr_i == 32'h0);
+ConstantBoot: assume property (@(posedge clk_i) boot_addr_i == $past(boot_addr_i));
 // 3. Always fetch enable
-// FetchEnable: assume property (fetch_enable_i == IbexMuBiOn);
+FetchEnable: assume property (@(posedge clk_i) fetch_enable_i == IbexMuBiOn);
 // 4. Never try to sleep if we couldn't ever wake up
-// WFIStart: assume property (`IDC.ctrl_fsm_cs == SLEEP |-> (
-                                                         //  `CSR.mie_q.irq_software |
-                                                         //  `CSR.mie_q.irq_timer |
-                                                         //  `CSR.mie_q.irq_external
-                                                         // ));
+WFIStart: assume property (@(posedge clk_i) `IDC.ctrl_fsm_cs == SLEEP |-> (
+                            `CSR.mie_q.irq_software |
+                            `CSR.mie_q.irq_timer |
+                            `CSR.mie_q.irq_external
+                            ));
 // See protocol/* for further assumptions
 
 ///////////////////////////////// Declarations /////////////////////////////////
@@ -197,9 +209,8 @@ logic [31:0] pre_mip;
 //  - wbexc_P is 1 if P is true for the instruction in the WB/EXC (exception) stage.
 
 logic ex_is_wfi, ex_is_rtype, ex_is_div;
-logic ex_is_pres_btype, ex_is_pres_jump;
+logic ex_is_btype, ex_is_jump;
 logic ex_is_mem_instr, ex_is_load_instr, ex_is_store_instr;
-logic ex_is_pres_mem_instr, ex_is_pres_load_instr, ex_is_pres_store_instr;
 
 // Have we branched, or are we branching in this cycle?
 logic ex_has_branched_d, ex_has_branched_q;
@@ -221,9 +232,7 @@ logic has_two_resp_waiting_q, has_two_resp_waiting_d;
 assign has_two_resp_waiting_q = data_mem_assume.outstanding_reqs_q == 8'h2;
 assign has_two_resp_waiting_d = data_mem_assume.outstanding_reqs == 8'h2;
 
-logic wbexc_is_pres_load_instr, wbexc_is_pres_store_instr;
-logic wbexc_is_load_instr, wbexc_is_store_instr;
-logic wbexc_is_pres_mem_instr, wbexc_is_mem_instr;
+logic wbexc_is_load_instr, wbexc_is_store_instr, wbexc_is_mem_instr;
 logic wbexc_is_wfi;
 
 logic [31:0] ex_compressed_instr;
@@ -434,10 +443,6 @@ assign ex_is_checkable_csr = ~(
 
 `undef INSTR
 `define INSTR wbexc_decompressed_instr
-
-// Illegal instructions aren't checkable unless the relevant specifications are present.
-logic can_check_illegal;
-assign can_check_illegal = `SPEC_ILLEGAL & `SPEC_CSR & `SPEC_MRET & `SPEC_WFI;
 
 `undef INSTR
 

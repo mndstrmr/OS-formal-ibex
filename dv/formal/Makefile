@@ -1,6 +1,7 @@
 IBEX_ROOT=../..
 
 SAIL=sail
+PSGEN=psgen
 
 SAIL_RISCV_MODEL_DIR=${LOWRISC_SAIL_RISCV_SRC}/model
 
@@ -36,23 +37,26 @@ fusesoc:
 .PHONY: sv
 sv:
 	mkdir -p build
-	python3 buildspec.py header > build/ibexspec_instrs.sv
-	cd build && $(SAIL) $(SAIL_SRCS) $(SAIL_EXTRA_SRCS) $(SAIL_SV_FLAGS) `cd .. && python3 buildspec.py unreachables` -o ibexspec
+	cd build && $(SAIL) $(SAIL_SRCS) $(SAIL_EXTRA_SRCS) $(SAIL_SV_FLAGS) $(addprefix -sv_unreachable execute_,$(COMPRESSED_INSTRS)) -o ibexspec
 	python3 spec/fix_bugs.py
-	python3 buildspec.py unreachable_loc_hack
 
 .PHONY: psgen
 psgen:
 	mkdir -p build
-	psgen $(addprefix -path ,$(PSGEN_SRCS)) $(PSGEN_FLAGS) -sv-out build/psgen.sv -tcl-out build/psgen.tcl
+	$(PSGEN) $(addprefix -path ,$(PSGEN_SRCS)) $(PSGEN_FLAGS) -sv-out build/psgen.sv -tcl-out build/psgen.tcl -clocking
 
 .PHONY: jg
 jg: fusesoc psgen sv
 	jg verify.tcl -allow_unsupported_OS -acquire_proj
 
-.PHONY: oss-dev
-oss-dev:
+.PHONY: sby-dev
+sby-dev:
 	yosys -m $(LOWRISC_YOSYS_SLANG) -p 'read_slang --top top -DSYNTHESIS -f slang.scr --single-unit'
+
+.PHONY: sby-prove
+sby-prove: fusesoc psgen sv
+	rm -rf verify verify_main
+	cat verify.sby | envsubst | sby --prefix `pwd`/verify
 
 # The following default target is intended for regressions / unattended runs.
 .PHONY: all
@@ -66,3 +70,4 @@ clean:
 	rm -rf build/
 	rm -rf jgproject/
 	rm -rf jgproofs/
+
