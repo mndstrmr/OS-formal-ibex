@@ -7,11 +7,11 @@ mode prove
 --
 
 [engines]
-smtbmc boolector
-smtbmc --unroll yices
-aiger avy
+# smtbmc boolector
+# smtbmc --unroll yices
+# aiger avy
 aiger rIC3
-abc pdr
+# abc pdr
 
 [script]
 plugin -i slang.so

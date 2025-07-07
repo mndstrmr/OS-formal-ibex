@@ -56,7 +56,7 @@ sby-dev:
 .PHONY: sby-prove
 sby-prove: fusesoc psgen sv
 	rm -rf verify verify_main
-	cat verify.sby | envsubst | sby --prefix `pwd`/verify
+	cat verify.sby | envsubst | sby --prefix `pwd`/verify $(SBY_ARGS)
 
 # The following default target is intended for regressions / unattended runs.
 .PHONY: all

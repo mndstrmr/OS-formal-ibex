@@ -442,9 +442,6 @@ assign ex_is_checkable_csr = ~(
 );
 
 `undef INSTR
-`define INSTR wbexc_decompressed_instr
-
-`undef INSTR
 
 ////////////////////// Decompression Invariant Defs //////////////////////
 // These will be used to show that the decompressed instruction stored is in fact the decompressed version of the compressed instruction.

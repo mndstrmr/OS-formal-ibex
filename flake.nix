@@ -186,7 +186,7 @@
                 z3
                 avy
                 gtkwave # not stricly necesssary, but definitely useful for a dev shell
-                # ric3
+                # ric3 # Definitely necessary, but I've been unable to package it thus far
               ]);
               shellHook = exports + dev_msg + ''
                 export LOWRISC_YOSYS_SLANG=${lowrisc_yosys_slang.out}/lib/slang.so

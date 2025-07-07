@@ -42,6 +42,9 @@ interface mem_assume_t(
     // 2. Grants can only be sent when they are requested
     MemGntOnRequest: assume property (@(posedge clk_i) ~req_o |-> ~gnt_i);
 
+    StrictGnt: assume property (@(posedge clk_i) req_o |-> gnt_i);
+    StrictRValid: assume property (@(posedge clk_i) outstanding_reqs_q != 8'b0 |-> rvalid_i);
+
     // Grants must respond within TIME_LIMIT cycles
     // GntBound: assume property (@(posedge clk_i) req_o |-> ##[0:`TIME_LIMIT] gnt_i);
 
