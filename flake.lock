@@ -274,11 +274,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1751876858,
-        "narHash": "sha256-2+FH+YxNzfjCxSe61UKNUoCdY09YvXxY5RguOUgn24s=",
+        "lastModified": 1751979806,
+        "narHash": "sha256-NJ3MwbII3fk3RzqBBm6vi+46nFtwpSgYQsiOIFlxVUc=",
         "owner": "mndstrmr",
         "repo": "psgen",
-        "rev": "a0bfcfc99c01ce7b0839dc5988cc2e3227877f75",
+        "rev": "409b933c2e8518c3adadfa55f972848451d9bdce",
         "type": "github"
       },
       "original": {

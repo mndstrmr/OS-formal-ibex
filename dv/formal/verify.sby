@@ -1,9 +1,11 @@
 [tasks]
-main prove
+step0 prove
+step1 prove
 
 [options]
 prove:
 mode prove
+skip_prep on
 --
 
 [engines]
@@ -14,9 +16,9 @@ aiger rIC3
 # abc pdr
 
 [script]
-plugin -i slang.so
-read_slang --top top -DSYNTHESIS -DSYMBIOSIS -f slang.scr --single-unit
+read_rtlil preprocessed.il
+step0: delete top/*_Step1_*
+step1: chformal -assert2assume top/*_Step0_*
 
 [files]
-slang.scr
-$LOWRISC_YOSYS_SLANG
+build/preprocessed.il
