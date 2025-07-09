@@ -108,11 +108,11 @@ lemma ibex
   block
     NoFinishingIRQ: have (wbexc_exists |-> ~wbexc_handling_irq)
     /
-    # SpecPastReg: have (wbexc_exists & wbexc_post_wX_en |-> spec_past_regs[wbexc_post_wX_addr] == wbexc_post_wX)
-    # SpecPastWbexc:
-    # each X Priv:(priv) Mstatus:(mstatus) Mie:(mie) Mcause:(mcause) Mtval:(mtval) Mtvec:(mtvec) \
-    #       Mscratch:(mscratch) Mepc:(mepc) Mcounteren:(mcounteren) \
-    #       Pmp_cfg:(pmp_cfg) Pmp_addr:(pmp_addr) Mseccfg:(mseccfg) \
-    #       Pc:(pc)
-    #   have (wbexc_exists |-> spec_past_``X == wbexc_post_``X)
+    SpecPastReg: have (wbexc_exists & wbexc_post_wX_en |-> spec_past_regs[wbexc_post_wX_addr] == wbexc_post_wX)
+    SpecPastWbexc:
+    each X Priv:(priv) Mstatus:(mstatus) Mie:(mie) Mcause:(mcause) Mtval:(mtval) Mtvec:(mtvec) \
+          Mscratch:(mscratch) Mepc:(mepc) Mcounteren:(mcounteren) \
+          Pmp_cfg:(pmp_cfg) Pmp_addr:(pmp_addr) Mseccfg:(mseccfg) \
+          Pc:(pc)
+      have (wbexc_exists |-> spec_past_``X == wbexc_post_``X)
 

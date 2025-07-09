@@ -18,6 +18,7 @@ with open("build/ibexspec.sv", "r") as f:
 
 c = c.replace(S, "")
 c = c.replace("sail_return = sail_internal_pick(zz495);", "/* removed */")
+c = c.replace("main_result = main(insn_bits, mode);", "wX_sail_invoke_arg_0[0] = 0; wX_sail_invoke_arg_1[0] = 0;\n        main_result = main(insn_bits, mode);")
 
 with open("build/ibexspec.sv", "w") as f:
     f.write(c)

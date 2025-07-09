@@ -16,8 +16,7 @@ SAIL_SV_FLAGS=-sv -sv-comb -sv-inregs -sv-outregs -sv-nostrings -sv-nopacked -sv
 	-sv-unreachable translate -sv-unreachable lookup_TLB -sv-unreachable translate_tlb_miss -sv-unreachable translate_tlb_hit -sv-unreachable pt_walk \
 	-sv-fun2wires 2:read_ram \
 	-sv-fun2wires 2:write_ram \
-	-sv-fun2wires wX \
-	-sv-fun2wires 2:rX \
+	-sv-fun2wires wX
 
 # Use fusesoc to resolve the tree of components, copy all resolved source files into the build/ directory,
 # and then generate a filelist for jasper to ingest.

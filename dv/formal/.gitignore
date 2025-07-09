@@ -1,5 +1,5 @@
 build
 jgproject
 jgproofs
-verify_main
+verify_*
 verify
