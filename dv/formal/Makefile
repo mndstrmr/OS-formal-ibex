@@ -12,11 +12,11 @@ PSGEN_FLAGS=-root riscv -task
 
 SAIL_EXTRA_SRCS=spec/main.sail
 
-SAIL_SV_FLAGS=-sv -sv-comb -sv-inregs -sv-outregs -sv-nostrings -sv-nopacked -sv-nomem -Oconstant_fold -memo-z3 \
-	-sv-unreachable translate -sv-unreachable lookup_TLB -sv-unreachable translate_tlb_miss -sv-unreachable translate_tlb_hit -sv-unreachable pt_walk \
-	-sv-fun2wires 2:read_ram \
-	-sv-fun2wires 2:write_ram \
-	-sv-fun2wires wX
+SAIL_SV_FLAGS=-sv --sv-comb --sv-inregs --sv-outregs --sv-nostrings --sv-nopacked --sv-nomem -Oconstant_fold -memo-z3 \
+	--sv-unreachable translate --sv-unreachable lookup_TLB --sv-unreachable translate_tlb_miss --sv-unreachable translate_tlb_hit --sv-unreachable pt_walk \
+	--sv-fun2wires 2:read_ram \
+	--sv-fun2wires 2:write_ram \
+	--sv-fun2wires wX 
 
 # Use fusesoc to resolve the tree of components, copy all resolved source files into the build/ directory,
 # and then generate a filelist for jasper to ingest.
@@ -40,10 +40,11 @@ build/ibexspec.sv: $(SAIL) $(SAIL_SRCS) $(SAIL_EXTRA_SRCS) Sources.mk Makefile
 
 build/psgen.sv: $(PSGEN) $(PSGEN_SRCS) Makefile
 	mkdir -p build
-	$(PSGEN) $(addprefix -path ,$(PSGEN_SRCS)) $(PSGEN_FLAGS) -sv-out build/psgen.sv -tcl-out build/psgen.tcl -clocking -step-prefix
+	$(PSGEN) $(addprefix -path ,$(PSGEN_SRCS)) $(PSGEN_FLAGS) -sv-out build/psgen.sv -tcl-out build/psgen.tcl -clocking -step-prefix -list build/proplist.txt
 
-build/preprocessed.il: build/ibexspec.sv build/psgen.sv build/fusesoc preprocess.ys check spec $(LOWRISC_YOSYS_SLANG)
-	cat preprocess.ys | envsubst | yosys -m $(LOWRISC_YOSYS_SLANG) -q
+# FIXME: This depends on fusesoc and ibexspec
+build/noprops.aig: build/psgen.sv
+	cat build_all.ys | yosys -m $(LOWRISC_YOSYS_SLANG) -m ~/opt_muxtree/opt_muxtree_2.so
 
 .PHONY: jg
 jg: build/fusesoc build/psgen.sv build/ibexspec.sv

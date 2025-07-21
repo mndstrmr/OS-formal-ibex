@@ -20,6 +20,7 @@ pyyaml = "6.0"
 wheel = "0.41.2"
 edalize = { git = "https://github.com/lowRISC/edalize.git", tag = "v0.4.0"}
 fusesoc = { git = "https://github.com/lowRISC/fusesoc.git", tag = "ot-0.4" }
+tqdm = "2.2.3"
 
 [build-system]
 requires = ["poetry-core"]

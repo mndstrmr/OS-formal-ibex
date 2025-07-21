@@ -1,0 +1,53 @@
+# FIXME: Fix nix hash
+read_slang --top top -DSYNTHESIS -DSYMBIOSIS -DNO_PROPS -F slang.scr -I /nix/store/jpk5lrq1pakrf8cifgvickzp1p9fanzw-source/lib/sv/ --single-unit
+opt_clean
+opt_muxtree_2
+opt_muxtree_2
+opt_muxtree_2
+opt_clean
+stat
+scc -select; simplemap; select -clear
+memory_nordff
+async2sync
+chformal -assume -early
+formalff -setundef -clk2ff -ff2anyinit -hierarchy
+opt_clean
+check
+setundef -undriven -anyseq
+opt -fast
+opt_muxtree_2
+opt_muxtree_2
+opt_clean
+stat
+delete */t:$print
+hierarchy -simcheck
+flatten
+opt_clean
+setattr -unset keep
+delete -output
+opt_clean
+write_rtlil build/noprops.0.il
+opt -full
+opt_muxtree_2
+opt_muxtree_2
+opt_clean
+stat
+techmap
+opt -fast
+opt_muxtree_2
+opt_clean
+stat
+memory_map -formal
+formalff -clk2ff -ff2anyinit
+write_rtlil build/noprops.1.il
+simplemap
+dffunmap
+opt_clean
+stat
+write_rtlil build/noprops.2.il
+# read_rtlil build/noprops.2.il
+stat
+abc -g AND -fast
+opt_clean
+stat
+write_aiger -I -B -zinit -no-startoffset -ywmap build/noprops.aig.map build/noprops.aig

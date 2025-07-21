@@ -71,16 +71,16 @@
     "lowrisc_sail": {
       "flake": false,
       "locked": {
-        "lastModified": 1751880045,
-        "narHash": "sha256-l42K5y+aT/Wy8mwE5E5Q8I98InKYINKZoVMBH/yqwnk=",
+        "lastModified": 1753116439,
+        "narHash": "sha256-1eS8UJV3Fi4pTuPEq0o0y0RCwylIoRV3qjx2m7Bl9MY=",
         "owner": "lowrisc",
         "repo": "sail",
-        "rev": "0a978e03f30059f0f084bf0f70c2c2bbf7cd561a",
+        "rev": "3cf947054e53f0d81ac6db256240d925fcbadbb9",
         "type": "github"
       },
       "original": {
         "owner": "lowrisc",
-        "ref": "lowrisc",
+        "ref": "ast_translate",
         "repo": "sail",
         "type": "github"
       }
@@ -105,11 +105,11 @@
     "lowrisc_yosys_slang": {
       "flake": false,
       "locked": {
-        "lastModified": 1751901824,
-        "narHash": "sha256-MbpynIj2Ug7a0OiD07uyU5f1RpJPQhMvXxpBFB5Llwg=",
+        "lastModified": 1753116324,
+        "narHash": "sha256-hvMxtdOUHGBuvCzBW+OTNUhzgdNsUXCOTtxdQW4+GlA=",
         "ref": "formal",
-        "rev": "f4b6518fbe4355cf28e2ad2d13a10cdd5417b11e",
-        "revCount": 494,
+        "rev": "fcaa8aec73c68c96494227d654bd7dd4897c19d1",
+        "revCount": 495,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/mndstrmr/yosys-slang"
@@ -274,11 +274,11 @@
         ]
       },
       "locked": {
-        "lastModified": 1751979806,
-        "narHash": "sha256-NJ3MwbII3fk3RzqBBm6vi+46nFtwpSgYQsiOIFlxVUc=",
+        "lastModified": 1753116287,
+        "narHash": "sha256-T/B77R/2Itw9L8lGOUMCJJstWJbEvTBNZ/sjZC+zQSw=",
         "owner": "mndstrmr",
         "repo": "psgen",
-        "rev": "409b933c2e8518c3adadfa55f972848451d9bdce",
+        "rev": "f447733727f3467dcee3632ffd4ba34ca7ee1461",
         "type": "github"
       },
       "original": {

@@ -28,7 +28,7 @@
       inputs.flake-utils.follows = "flake-utils";
     };
     lowrisc_sail = {
-      url = "github:lowrisc/sail?ref=lowrisc";
+      url = "github:lowrisc/sail?ref=ast_translate";
       flake = false;
     };
     lowrisc_sail_riscv = {
@@ -42,6 +42,11 @@
       type = "git";
       submodules = true;
     };
+
+    # ric3 = {
+    #   url = "github:gipsyh/rIC3";
+    #   flake = false;
+    # }; 
   };
 
   # The lowRISC public nix-cache contains builds of nix packages used by lowRISC, primarily coming from github:lowRISC/lowrisc-nix.
@@ -109,17 +114,31 @@
         #   rustc = pkgs.rustc;
         #   cargo = pkgs.cargo;
         # };
+        # ric3 = pkgs.stdenv.mkDerivation (finalAttrs: {
+        #   pname = "rIC3";
+        #   version = "0.0.1";
+        #   src = inputs.ric3;
+        #   buildInputs = with pkgs; [
+        #     rustup
+        #   ];
+        #   buildPhase = ''
+        #     rustup run nightly cargo build
+        #   '';
+        #   installPhase = ''
+        #     rustp run nightly cargo install
+        #   '';
+        # });
         # ric3 = rustPlatform.buildRustPackage {
         #   pname = "ric3";
         #   version = "1.4.1";
         #   # cargoLock = {
         #   #   lockFile = ./Cargo.lock;
         #   # };
-        #   src = pkgs.fetchFromGithub {
-        #     owner = "gipsyh";
-        #     name = "rIC3";
-        #     rev = "3c15882";
-        #   };
+          # src = pkgs.fetchFromGithub {
+          #   owner = "gipsyh";
+          #   name = "rIC3";
+          #   rev = "3c15882";
+          # };
         # };
 
         standard_deps = [
@@ -178,9 +197,13 @@
             };
 
             oss-dev = mkshell-minimal {
-              packages = standard_deps ++ [lowrisc_yosys_slang] ++ (with pkgs; [
+              packages = standard_deps ++ [
+                lowrisc_yosys_slang
+                (pkgs.yosys.override (attrs: { enablePython = false; }))
+                # pkgs.yosys
+              ] ++ (with pkgs; [
                 sby
-                yosys
+                # yosys
                 boolector
                 yices
                 z3
