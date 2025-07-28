@@ -1,4 +1,3 @@
-use aig::AigEdge;
 use clap::Parser;
 use serde::Deserialize;
 
@@ -85,8 +84,7 @@ fn main() {
             }
             AssertAction::ToAssume => {
                 println!("Assert2Assume {}", name);
-                let imply = aig.new_imply_node(aig.bads[b], AigEdge::constant(false));
-                aig.constraints.push(imply);
+                aig.constraints.push(!aig.bads[b]);
                 aig.bads.remove(b);
             }
             AssertAction::Keep => {
