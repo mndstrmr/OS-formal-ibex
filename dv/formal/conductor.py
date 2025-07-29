@@ -1,4 +1,5 @@
 import asyncio
+import re
 import subprocess
 import time
 import json
@@ -46,7 +47,7 @@ class Process:
 
     def start(self):
         print("$", self.cmd)
-        self.proc = subprocess.Popen(self.cmd, shell=True, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        self.proc = subprocess.Popen(self.cmd, shell=True, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         self.start_time = time.time()
         self.max_memory = 0
 
@@ -101,9 +102,9 @@ class Process:
         return False
 
 class ProcessRunner:
-    GLOBAL_MEMORY_BUFFER = 10
+    GLOBAL_MEMORY_BUFFER = 5
     POLL_DELAY = 0.1
-    MAX_RUNNING = len(os.sched_getaffinity(0))
+    MAX_RUNNING = len(os.sched_getaffinity(0)) - 2
     
     def __init__(self):
         self.pending = []
@@ -147,6 +148,7 @@ class ProcessRunner:
                 p += 1
 
         asyncio.get_running_loop().call_later(ProcessRunner.POLL_DELAY, lambda: self.poll())
+print(f"Process runner will have a maximum of {ProcessRunner.MAX_RUNNING} processes")
 
 class Killer:
     def __init__(self):
@@ -262,60 +264,69 @@ async def explore(step, props, timeout=None, configs=None, debug_slow=None) -> a
     
     return await race([explore_one(config, idx, mem) for idx, (config, mem) in enumerate(STANDARD_ENGINES if configs is None else configs)])
 
-async def build_strategy(step, props, max_chunk=None):
-    if max_chunk is not None and len(props) > max_chunk:
-        chunks = [
-            props[i * max_chunk:(i + 1) * max_chunk] for i in range((len(props) // max_chunk) + 1)
-        ]
-        chunks = await asyncio.gather(*[build_strategy(step, chunk) for chunk in chunks])
-        strategy = []
-        for chunk in chunks:
-            strategy.extend(chunk)
-        return strategy
-        
-    if len(props) == 0:
-        return []
-    
-    if len(props) == 1:
-        while True:
-            res = await explore(step, props, timeout=150.0, debug_slow=lambda dt: print(gray(f"Still exploring step {step} property {props[0]} ({dt:.3f}s)")))
-            if res is not None:
-                print(green(f"Constructed proof for 1 property in step {step}: {props[0]}"))
-                return [(step, props, res[0], res[1])]
-            print(red(f"Failed to find proof for property in step {step}: {props[0]} - ignoring"))
-            return []
-            
+async def build_strategy_rec(step, prop_tree, eager=False):
+    def find_all(prop_tree, all_props):
+        for prop in prop_tree:
+            if type(prop) == str:
+                all_props.append(prop)
+            else:
+                find_all(prop, all_props)
+    all_props = []
+    find_all(prop_tree, all_props)
 
     ENGINES = [
-        ("rIC3", 10),
+        # ("rIC3", 10),
         # ("rIC3 --no-preproc", 20),
         ("rIC3 -e kind --no-preproc", 10),
-        ("rIC3 -e kind", 10)
+        # ("rIC3 -e kind", 10)
     ]
 
-    # async def without_split_kind():
-    #     # FIXME: Is it a good idea to run this forever?
-    #     res = await explore(step, props, configs=[("rIC3 -e kind", 10)])
-    #     if res is not None:
-    #         print(green(f"Constructed proof for properties in step {step}: {' '.join(props)}"))
-    #         won_race([(step, props, res[0], res[1])])
-    
+    if len(all_props) == 0:
+        return []
+
+    if len(all_props) == 1:
+        while True:
+            res = await explore(step, all_props, timeout=300.0, configs=ENGINES, debug_slow=lambda dt: print(gray(f"Still exploring step {step} property {all_props[0]} ({dt:.3f}s)")))
+            if res is not None:
+                print(green(f"Constructed proof for 1 property in step {step}: {all_props[0]}"))
+                return [(step, all_props, res[0], res[1])]
+            print(red(f"Failed to find proof for property in step {step}: {all_props[0]} - ignoring"))
+            return []
+
+    if len(prop_tree) == 1:
+        return await build_strategy_rec(step, prop_tree[0])
+
     async def without_split():
-        # FIXME: Is it helpful to give this a long timeout?
-        res = await explore(step, props, timeout=60.0, configs=ENGINES)
+        res = await explore(step, all_props, timeout=120.0, configs=ENGINES)
         if res is not None:
-            print(green(f"Constructed proof for {len(props)} properties in step {step}: {' '.join(props)}"))
-            won_race([(step, props, res[0], res[1])])
+            print(green(f"Constructed proof for {len(all_props)} properties in step {step}: {' '.join(all_props)}"))
+            won_race([(step, all_props, res[0], res[1])])
 
     async def with_split():
-        await asyncio.sleep(60.0) # Give the rest a head start
+        children = []
+        rest = []
+        for prop in prop_tree:
+            if type(prop) == str:
+                rest.append(prop)
+            else:
+                children.append(prop)
 
-        left, right = props[:len(props) // 2], props[len(props) // 2:]
-        [left, right] = await asyncio.gather(build_strategy(step, left), build_strategy(step, right))
-        won_race(left + right)
+        if not eager:
+            await asyncio.sleep(120.0) # Give the rest a head start
+        else:
+            await asyncio.sleep(20.0) # Give the rest a tiny head start anyway
+
+        if len(children) == 0:
+            solutions = await asyncio.gather(*[build_strategy_rec(step, [child]) for child in rest])
+        else:
+            children.append(rest)
+            solutions = await asyncio.gather(*[build_strategy_rec(step, tree) for tree in children])
+        flattened = []
+        for solution in solutions:
+            flattened.extend(solution)
+        won_race(flattened)
 
     return await race([without_split(), with_split()])
-    # return await race([without_split()])
 
 async def run_strategy(strategy):
     proofs = []
@@ -323,6 +334,32 @@ async def run_strategy(strategy):
     for step in strategy:
         proofs.append(prove(step[2], step[0], step[1], expected_memory=step[3][1] * 1.1))
     return await asyncio.gather(*proofs)
+
+def split_by_prefixes(names):
+    def chunk_name(name):
+        nts = lambda x: "" if x is None else x
+        split = re.split(r"_([A-Z])|_|([A-Z])", name)
+        return ([split[0]] if split[0] != "" else []) + [nts(split[i + 1]) + nts(split[i + 2]) + split[i + 3] for i in range(0, len(split) - 1, 3)]
+
+    def group(props):
+        buckets = {}
+        done = []
+        for chunks, name in props:
+            if len(chunks) == 1:
+                done.append(name)
+            elif chunks[0] not in buckets:
+                buckets[chunks[0]] = [(chunks[1:], name)]
+            else:
+                buckets[chunks[0]].append((chunks[1:], name))
+        for pre in buckets:
+            bucket = group(buckets[pre])
+            # while len(bucket) == 1:
+            #     bucket = bucket[0]
+            done.append(bucket)
+        return done
+            
+    chunked_names = [(chunk_name(name), name) for name in names]
+    return group(chunked_names)
 
 SKIPPED_PROPS = [
     (1, "Ibex_SpecPastReg"),
@@ -370,7 +407,14 @@ SKIPPED_PROPS = [
 
     (7, "Ibex_IRQMainResMatch"),
 
-    (8, "Ibex_SpecEnUnreach")
+    (8, "Ibex_SpecEnUnreach"),
+
+    (9, "Mem_EarlyLSUCtrlMatch"),
+    (9, "Mem_LoadPMPErrorWx"),
+    
+    (10, "Fence_FenceI_PC"),
+
+    (21, "RegMatch_14"),
 ]
 if len(SKIPPED_PROPS) > 0:
     print(orange(f"WARNING: Skipped properties: {' '.join([x[1] for x in SKIPPED_PROPS])}"))
@@ -378,12 +422,15 @@ if len(SKIPPED_PROPS) > 0:
 HIGH_LEVEL_STRATEGY = [
     "normal", # 0
     "normal", # 1
-    "properties", # 2
+    "normal", # 2
+    # "properties", # 2
     "normal", # 3
     "normal", # 4
     "normal", # 5
     "properties", # 6
-    
+    "normal", # 7
+    "normal", # 8
+    "prefix", # 9
 ]
 
 NO_SAVE = False
@@ -426,18 +473,30 @@ async def main():
         highlevel = "normal"
         if step < len(HIGH_LEVEL_STRATEGY):
             highlevel = HIGH_LEVEL_STRATEGY[step]
+
         match highlevel:
             case "normal":
-                print(white("strategy: recursive splitting"))
-                strategy = await build_strategy(step, props, max_chunk=20)
+                print(white("strategy: name based recursive splitting, linear fallback"))
+                blocks = split_by_prefixes(props)
+                strategy = await build_strategy_rec(step, blocks)
+            # case "small":
+            #     print(white("strategy: small initial chunk, recursive splitting"))
+            #     strategy = await build_strategy(step, props, max_chunk=4)
+            # case "prefix":
+            #     print(white("strategy: initially split by prefix"))
+            #     print(blocks)
+            #     exit(1)
+                # strategy = await build_strategy(step, props, max_chunk=4)
             case "properties":
                 print(white("strategy: each property"))
                 strategy = []
-                for x in await asyncio.gather(*[build_strategy(step, [prop]) for prop in props]):
+                for x in await asyncio.gather(*[build_strategy_rec(step, [prop]) for prop in props]):
                     strategy.extend(x)
             case x:
                 print(red(f"ERROR: Unknown high level strategy {x}, using normal"))
-                strategy = await build_strategy(step, props, max_chunk=20)
+                print(white("strategy: name based recursive splitting, linear fallback"))
+                blocks = split_by_prefixes(props)
+                strategy = await build_strategy_rec(step, blocks)
         
         build_dt = time.time() - build_start
         print(gray(json.dumps(strategy)))
@@ -453,17 +512,20 @@ async def main():
         return strategy
 
     for step, props in enumerate(by_step):
-        if step < 9:
+        if step < 19:
             print(orange(f"Skipping step {step}"))
             continue
 
         strategy = await get_strategy(step, props)
 
-        print(white(f"Running strategy for step {step} ({len(props)} properties)"))
-        run_start = time.time()
-        await run_strategy(strategy)
-        run_dt = time.time() - run_start
-        print(white(f"Ran strategy for step {step} in {run_dt:.3f}s"))
+        if len(strategy) != 1:
+            print(white(f"Running strategy for step {step} ({len(props)} properties)"))
+            run_start = time.time()
+            await run_strategy(strategy)
+            run_dt = time.time() - run_start
+            print(white(f"Ran strategy for step {step} in {run_dt:.3f}s"))
+        else:
+            print(white(f"Skipping proof run for step {step}, since it has just one step"))
     
     all_strategies = []
     for step, props in enumerate(by_step):

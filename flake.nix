@@ -43,10 +43,10 @@
       submodules = true;
     };
 
-    # ric3 = {
-    #   url = "github:gipsyh/rIC3";
-    #   flake = false;
-    # }; 
+    fenix = {
+      url = "github:nix-community/fenix";
+      inputs.nixpkgs.follows = "nixpkgs";
+    };
   };
 
   # The lowRISC public nix-cache contains builds of nix packages used by lowRISC, primarily coming from github:lowRISC/lowrisc-nix.
@@ -81,12 +81,7 @@
           src = inputs.lowrisc_sail;
         };
 
-        # Sail RISC-V model with changes for Ibex
-        lowrisc_sail_riscv.src = (import ./nix/lowrisc_sail_riscv.nix {
-          pkgs = pkgs-old;
-          src = inputs.lowrisc_sail_riscv;
-        }).src;
-
+        # lowRISC fork of the yosys slang frontend.
         lowrisc_yosys_slang = import ./nix/lowrisc_yosys_slang.nix {
           inherit pkgs;
           src = inputs.lowrisc_yosys_slang;
@@ -109,37 +104,32 @@
             ];
           };
 
-
-        # rustPlatform = pkgs.makeRustPlatform {
-        #   rustc = pkgs.rustc;
-        #   cargo = pkgs.cargo;
-        # };
-        # ric3 = pkgs.stdenv.mkDerivation (finalAttrs: {
-        #   pname = "rIC3";
-        #   version = "0.0.1";
-        #   src = inputs.ric3;
-        #   buildInputs = with pkgs; [
-        #     rustup
-        #   ];
-        #   buildPhase = ''
-        #     rustup run nightly cargo build
-        #   '';
-        #   installPhase = ''
-        #     rustp run nightly cargo install
-        #   '';
-        # });
-        # ric3 = rustPlatform.buildRustPackage {
-        #   pname = "ric3";
-        #   version = "1.4.1";
-        #   # cargoLock = {
-        #   #   lockFile = ./Cargo.lock;
-        #   # };
-          # src = pkgs.fetchFromGithub {
-          #   owner = "gipsyh";
-          #   name = "rIC3";
-          #   rev = "3c15882";
-          # };
-        # };
+        # rIC3 needs a nightly toolchain
+        toolchain = inputs.fenix.packages.${system}.toolchainOf {
+          channel = "nightly";
+          date = "2025-07-29";
+          sha256 = "sha256-6D2b7glWC3jpbIGCq6Ta59lGCKN9sTexhgixH4Y7Nng=";
+        };
+        rustPlatform = pkgs.makeRustPlatform {
+          inherit (toolchain) rustc cargo;
+        };
+        ric3_src = pkgs.fetchCrate {
+          pname = "rIC3";
+          version = "1.4.1";
+          sha256 = "0713ncxbnz7phcnlcb5sgrwcjf3a8iapl027lca4g0aacybsgxsq";
+        };
+        ric3 = rustPlatform.buildRustPackage {
+          pname = "ric3";
+          version = "1.4.1";
+          cargoLock = {
+            lockFile = "${ric3_src}/Cargo.lock";
+          };
+          nativeBuildInputs = with pkgs; [
+            cmake
+            clang
+          ];
+          src = ric3_src;
+        };
 
         standard_deps = [
           inputs.psgen.packages.${system}.default
@@ -163,7 +153,7 @@
           # of the external source-file dependencies.
           # The can be re-exported manually for development (see .#formal-dev)
           export LOWRISC_SAIL_SRC=${lowrisc_sail.src}
-          export LOWRISC_SAIL_RISCV_SRC=${lowrisc_sail_riscv.src}
+          export LOWRISC_SAIL_RISCV_SRC=${inputs.lowrisc_sail_riscv}
         '';
         dev_msg = ''
           cat << EOF
@@ -200,19 +190,13 @@
               packages = standard_deps ++ [
                 lowrisc_yosys_slang
                 (pkgs.yosys.override (attrs: { enablePython = false; }))
-                # pkgs.yosys
               ] ++ (with pkgs; [
-                sby
-                # yosys
-                boolector
-                yices
-                z3
-                avy
                 gtkwave # not stricly necesssary, but definitely useful for a dev shell
-                # ric3 # Definitely necessary, but I've been unable to package it thus far
+                ric3
               ]);
               shellHook = exports + dev_msg + ''
                 export LOWRISC_YOSYS_SLANG=${lowrisc_yosys_slang.out}/lib/slang.so
+                export LD_LIBRARY_PATH=${pkgs.stdenv.cc.cc.lib}/lib/ # for rIC3, not sure why this should be necessary though
               '';
             };
         };
