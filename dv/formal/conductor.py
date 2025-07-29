@@ -167,6 +167,11 @@ async def shell(cmd, expected_memory = None, timeout = None, killer = None, debu
     process_runner.append(proc)
     return await proc.future
 
+SOURCE = "build/noprops.aig"
+
+# This (the result of aig-manip optimise) is far slower and more memory taxing to work with, so it should not be used
+# SOURCE = "build/noprops.opt.aig"
+
 aiger_idx = 0
 async def prepare_aiger(step, props):
     global aiger_idx
@@ -174,7 +179,7 @@ async def prepare_aiger(step, props):
     name = f"build/aiger-{aiger_idx}.aig"
     aiger_idx += 1
     assert (await shell(
-        f"./aig-manip/target/release/aig-manip build/noprops.aig build/noprops.aig.map {step} {name} {' '.join(props)}",
+        f"./aig-manip/target/release/aig-manip {SOURCE} {name} select build/noprops.aig.map {step} {' '.join(props)}",
         expected_memory=0.5
     ))[0] == 0
 
@@ -381,6 +386,8 @@ HIGH_LEVEL_STRATEGY = [
     
 ]
 
+NO_SAVE = False
+
 async def main():
     def preproc_name(name):
         first = name.split("$")[1][5:]
@@ -403,14 +410,15 @@ async def main():
         by_step[step].append(name)
 
     async def get_strategy(step, props):
-        try:
-            with open(f"strategies/step{step}.json", "r") as f:
-                print(white(f"Loading strategy for step {step} from cache"))
-                return json.load(f)
-        except FileNotFoundError:
-            pass
-        except json.JSONDecodeError as e:
-            print(red(f"Error decoding step{step}.json (ignoring): {e}"))
+        if not NO_SAVE:
+            try:
+                with open(f"strategies/step{step}.json", "r") as f:
+                    print(white(f"Loading strategy for step {step} from cache"))
+                    return json.load(f)
+            except FileNotFoundError:
+                pass
+            except json.JSONDecodeError as e:
+                print(red(f"Error decoding step{step}.json (ignoring): {e}"))
 
         print(white(f"Building strategy for step {step} ({len(props)} properties)"))
         build_start = time.time()
@@ -435,18 +443,19 @@ async def main():
         print(gray(json.dumps(strategy)))
         strategy = json.loads(json.dumps(strategy)) # Normalize, just in case, so that this run in is the same as the rest
         print(white(f"Constructed strategy for step {step} of {len(strategy)} proof steps in {build_dt:.3f}s"))
-        try:
-            os.makedirs("strategies", exist_ok=True)
-            with open(f"strategies/step{step}.json", "w") as f:
-                json.dump(strategy, f)
-        except Exception as e:
-            print(red(f"ERROR: Could not save strategy: {e}"))
+        if not NO_SAVE:
+            try:
+                os.makedirs("strategies", exist_ok=True)
+                with open(f"strategies/step{step}.json", "w") as f:
+                    json.dump(strategy, f)
+            except Exception as e:
+                print(red(f"ERROR: Could not save strategy: {e}"))
         return strategy
 
     for step, props in enumerate(by_step):
-        # if step < 6:
-        #     print(orange(f"Skipping step {step}"))
-        #     continue
+        if step < 9:
+            print(orange(f"Skipping step {step}"))
+            continue
 
         strategy = await get_strategy(step, props)
 
