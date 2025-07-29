@@ -103,7 +103,7 @@ class Process:
 class ProcessRunner:
     GLOBAL_MEMORY_BUFFER = 10
     POLL_DELAY = 0.1
-    MAX_RUNNING = 10
+    MAX_RUNNING = len(os.sched_getaffinity(0))
     
     def __init__(self):
         self.pending = []
@@ -464,5 +464,15 @@ async def main():
         await run_strategy(strategy)
         run_dt = time.time() - run_start
         print(white(f"Ran strategy for step {step} in {run_dt:.3f}s"))
+    
+    all_strategies = []
+    for step, props in enumerate(by_step):
+        all_strategies.extend(await get_strategy(step, props))
+
+    print(white(f"Running strategy for everything"))
+    run_start = time.time()
+    await run_strategy(all_strategies)
+    run_dt = time.time() - run_start
+    print(white(f"Ran strategy for everything in {run_dt:.3f}s"))
 
 asyncio.run(main())
