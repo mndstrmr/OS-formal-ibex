@@ -201,6 +201,18 @@ def proof_done(engine_config, step, props, results):
         case 20:
             print(green(f"UNSAT: {len(props)} properties in step {step} proven in {time:.3f}s with {mem:.3f}GB"))
             return "OK"
+        case 10:
+            print(red(f"=========================================================================================================================="))
+            print(red(f"=========================================================================================================================="))
+            print(red(f"=========================================================================================================================="))
+            print(red(f"         ==================== SAT: CEX in {step}, discovered in {time:.3f}s with {mem:.3f}GB =================="))
+            print(red(f"=========================================================================================================================="))
+            print(red(f"=========================================================================================================================="))
+            print(red(f"=========================================================================================================================="))
+            return "CEX"
+        case 30:
+            print(orange(f"UNDETERMINED: Failed to find a CEX or proof for {len(props)} properties in step {step} ({time:.3f}s with {mem:.3f}GB)"))
+            return "UNDETERMINED"
         case -9:
             print(red(f"KILLED by OS: Failed to prove {len(props)} properties in step {step} ({time:.3f}s with {mem:.3f}GB)"))
             return "KILL"
@@ -216,6 +228,9 @@ async def prove(engine_config, step, props, timeout=None, expected_memory=None):
     res = await shell(f"{engine_config} {specialised}", timeout=timeout, expected_memory=expected_memory)
     proof_done(engine_config, step, props, res)
     return res
+
+async def bmc(step, props, timeout=None, start=None, end=None):
+    return await prove("rIC3 -e bmc --no-preproc" + ("" if start is None else f" --start {start}") + ("" if end is None else f" --end {end}"), step, props, timeout=timeout)
 
 STANDARD_ENGINES = [
     ("rIC3", 10),
@@ -264,7 +279,7 @@ async def explore(step, props, timeout=None, configs=None, debug_slow=None) -> a
     
     return await race([explore_one(config, idx, mem) for idx, (config, mem) in enumerate(STANDARD_ENGINES if configs is None else configs)])
 
-async def build_strategy_rec(step, prop_tree, eager=False):
+async def build_strategy_rec(step, prop_tree, eager=False, difficult=False):
     def find_all(prop_tree, all_props):
         for prop in prop_tree:
             if type(prop) == str:
@@ -274,19 +289,27 @@ async def build_strategy_rec(step, prop_tree, eager=False):
     all_props = []
     find_all(prop_tree, all_props)
 
-    ENGINES = [
-        # ("rIC3", 10),
-        # ("rIC3 --no-preproc", 20),
-        ("rIC3 -e kind --no-preproc", 10),
-        # ("rIC3 -e kind", 10)
-    ]
+    if difficult:
+        ENGINES = [
+            ("rIC3", 10),
+            # ("rIC3 --no-preproc", 20),
+            ("rIC3 -e kind --no-preproc", 10),
+            ("rIC3 -e kind", 10)
+        ]
+    else:
+        ENGINES = [
+            # ("rIC3", 10),
+            # ("rIC3 --no-preproc", 20),
+            ("rIC3 -e kind --no-preproc", 10),
+            # ("rIC3 -e kind", 10)
+        ]
 
     if len(all_props) == 0:
         return []
 
     if len(all_props) == 1:
         while True:
-            res = await explore(step, all_props, timeout=300.0, configs=ENGINES, debug_slow=lambda dt: print(gray(f"Still exploring step {step} property {all_props[0]} ({dt:.3f}s)")))
+            res = await explore(step, all_props, timeout=1200.0 if difficult else 300.0, configs=ENGINES, debug_slow=lambda dt: print(gray(f"Still exploring step {step} property {all_props[0]} ({dt:.3f}s)")))
             if res is not None:
                 print(green(f"Constructed proof for 1 property in step {step}: {all_props[0]}"))
                 return [(step, all_props, res[0], res[1])]
@@ -413,6 +436,7 @@ SKIPPED_PROPS = [
     (9, "Mem_LoadPMPErrorWx"),
     
     (10, "Fence_FenceI_PC"),
+    (10, "FetchErr_CSR"),
 
     (21, "RegMatch_14"),
 ]
@@ -511,30 +535,54 @@ async def main():
                 print(red(f"ERROR: Could not save strategy: {e}"))
         return strategy
 
+    for i in range(4, 10):
+        for step, prop in SKIPPED_PROPS:
+            print(white(f"Doing BMC for step {i} on {prop} from step {step}"))
+            await bmc(step, [prop], start=i, end=i + 1)
+
     for step, props in enumerate(by_step):
-        if step < 19:
+        if step < 4:
             print(orange(f"Skipping step {step}"))
             continue
 
         strategy = await get_strategy(step, props)
+        known = set()
+        for strategy_step in strategy:
+            assert strategy_step[0] == step
+            known.update(strategy_step[1])
+        if known != set(props):
+            print(red("ERROR: known != props:"))
+            print(set(props).difference(known))
 
-        if len(strategy) != 1:
-            print(white(f"Running strategy for step {step} ({len(props)} properties)"))
-            run_start = time.time()
-            await run_strategy(strategy)
-            run_dt = time.time() - run_start
-            print(white(f"Ran strategy for step {step} in {run_dt:.3f}s"))
-        else:
-            print(white(f"Skipping proof run for step {step}, since it has just one step"))
+        # skipped = []
+        # SKIPPED_SKIPS = ["Ibex_BecameDecodeIsEmptyWbexc"]
+        # for pstep, prop in SKIPPED_PROPS:
+        #     if prop in SKIPPED_SKIPS: continue
+        #     if pstep == step:
+        #         print(await build_strategy_rec(step, [prop], difficult=True))
+            # if pstep == step:
+            #     skipped.append(prop)
+
+        # solutions = await asyncio.gather(*[build_strategy_rec(step, [skip], difficult=True) for skip in skipped])
+        # print(solutions)
+        
+        # if len(strategy) != 1:
+        #     print(white(f"Running strategy for step {step} ({len(props)} properties)"))
+        #     run_start = time.time()
+        #     await run_strategy(strategy)
+        #     run_dt = time.time() - run_start
+        #     print(white(f"Ran strategy for step {step} in {run_dt:.3f}s"))
+        # else:
+        #     print(white(f"Skipping proof run for step {step}, since it has just one step"))
     
-    all_strategies = []
-    for step, props in enumerate(by_step):
-        all_strategies.extend(await get_strategy(step, props))
+    # all_strategies = []
+    # for step, props in enumerate(by_step):
+    #     all_strategies.extend(await get_strategy(step, props))
 
-    print(white(f"Running strategy for everything"))
-    run_start = time.time()
-    await run_strategy(all_strategies)
-    run_dt = time.time() - run_start
-    print(white(f"Ran strategy for everything in {run_dt:.3f}s"))
+    # print(white(f"Running strategy for everything"))
+    # run_start = time.time()
+    # await run_strategy(all_strategies)
+    # run_dt = time.time() - run_start
+    # print(white(f"Ran strategy for everything in {run_dt:.3f}s"))
 
 asyncio.run(main())
