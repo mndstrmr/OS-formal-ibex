@@ -33,18 +33,18 @@ build/fusesoc: $(IBEX_ROOT)/rtl $(IBEX_ROOT)/vendor
 	  lowrisc:ibex:ibex_formal:0.1
 	touch build/fusesoc # Fix timestamps for Makefile
 
-build/ibexspec.sv: $(SAIL) $(SAIL_SRCS) $(SAIL_EXTRA_SRCS) Sources.mk Makefile
+build/ibexspec.sv: $(SAIL) $(SAIL_SRCS) $(SAIL_EXTRA_SRCS) Sources.mk Makefile spec/fix_bugs.py
 	mkdir -p build
 	cd build && $(SAIL) $(SAIL_SRCS) $(addprefix ../,$(SAIL_EXTRA_SRCS)) $(SAIL_SV_FLAGS) $(addprefix -sv_unreachable execute_,$(COMPRESSED_INSTRS)) -o ibexspec
 	python3 spec/fix_bugs.py
 
 build/psgen.sv: $(PSGEN) $(PSGEN_SRCS) Makefile
 	mkdir -p build
-	$(PSGEN) $(addprefix -path ,$(PSGEN_SRCS)) $(PSGEN_FLAGS) -sv-out build/psgen.sv -tcl-out build/psgen.tcl -clocking -step-prefix -list build/proplist.txt
+	$(PSGEN) $(addprefix -path ,$(PSGEN_SRCS)) $(PSGEN_FLAGS) -sv-out build/psgen.sv -tcl-out build/psgen.tcl -clocking -covers -cover-assert -step-prefix -list build/proplist.txt
 
 # FIXME: This depends on fusesoc and ibexspec
-build/noprops.aig: build/psgen.sv
-	cat build_all.ys | yosys -m $(LOWRISC_YOSYS_SLANG) -m ~/opt_muxtree/opt_muxtree_2.so
+build/noprops.aig: build/psgen.sv build/fusesoc build/ibexspec.sv build_all.ys
+	cat build_all.ys | yosys -m $(LOWRISC_YOSYS_SLANG) -m ~/opt_muxtree/opt_muxtree_2.so -m ~/write_aiger/aiger.so
 
 .PHONY: jg
 jg: build/fusesoc build/psgen.sv build/ibexspec.sv

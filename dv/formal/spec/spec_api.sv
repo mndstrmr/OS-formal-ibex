@@ -173,7 +173,12 @@ end
 t_Mseccfg_ent mseccfg_out;
 assign mseccfg_o = mseccfg_out.bits;
 
+logic sail_reached_unreachable;
+logic [31:0] sail_reached_unreachable_loc;
+
 sail_ibexspec spec_i(
+    .sail_reached_unreachable,
+    .sail_reached_unreachable_loc,
     .cur_inst_in(insn_bits),
     .cur_inst_out(),
     .cur_privilege_in(priv_i),
@@ -350,7 +355,7 @@ sail_ibexspec spec_i(
     .mode(main_mode)
 );
 
-assign int_err_o = spec_i.sail_reached_unreachable |
+assign int_err_o = sail_reached_unreachable |
                    spec_i.sail_have_exception |
                    (main_result != MAINRES_OK);
 

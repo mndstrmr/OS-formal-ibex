@@ -4,8 +4,6 @@
 // Original author: Louis-Emile Ploix
 // SPDX-License-Identifier: Apache-2.0
 
-`include "../build/ibexspec_instrs.sv"
-
 `ifndef CMP_INSNS
 `define CMP_INSNS
 
