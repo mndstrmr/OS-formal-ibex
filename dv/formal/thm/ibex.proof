@@ -134,23 +134,23 @@ lemma ibex
       ~`LSU.pmp_err_q && ~`LSU.lsu_err_d && ~`LSU.handle_misaligned_q &&
       `CR.lsu_resp_valid == outstanding_mem
     )
-      # $stable(data_addr_o) &&
     inv wait_gnt_mis (
+      $stable(data_addr_o) &&
       ~has_resp_waiting_q && ~`LSU.lsu_err_q &&
       (data_req_o == ~`LSU.pmp_err_q) && (`LSU.pmp_err_q == `CR.pmp_req_err[2])
     )
-      # $stable(data_addr_o) &&
     inv wait_gnt (
+      $stable(data_addr_o) &&
       ~has_resp_waiting_q &&
       (data_req_o == ~`LSU.pmp_err_q) && (`LSU.pmp_err_q == `CR.pmp_req_err[2])
     )
-      # ($stable(`LSU.ls_fsm_cs) -> $stable(data_addr_o)) &&
     inv wait_rvalid_mis (
+      ($stable(`LSU.ls_fsm_cs) -> $stable(data_addr_o)) &&
       ~`LSU.lsu_err_q &&
       ((~`LSU.pmp_err_q && has_one_resp_waiting_q) || (`LSU.pmp_err_q && ~has_resp_waiting_q))
     )
-      # $stable(data_addr_o) &&
     inv wait_rvalid_mis_gnts_done (
+      $stable(data_addr_o) &&
       (`LSU.pmp_err_q == `CR.pmp_req_err[2]) &&
       (
         (~`LSU.lsu_err_q && ~`LSU.pmp_err_q  && has_two_resp_waiting_q) ||
@@ -165,8 +165,7 @@ lemma ibex
     inv end (outstanding_mem && has_one_resp_waiting_q && wbexc_exists)
     inv fail (outstanding_mem && ~has_resp_waiting_q && wbexc_exists)
 
-    # entry ($rose(rst_ni)) -> idle
-    entry (~rst_ni) -> idle
+    entry ($rose(rst_ni)) -> idle
 
     node idle idle (`LSU.ls_fsm_cs == `LSU.IDLE && ~`IDG.outstanding_memory_access && (`ID.lsu_req_dec || ~`ID.lsu_req_done_i))
     edge idle => idle
@@ -279,10 +278,10 @@ lemma ibex
 
   RTypeFirstCycle: have (`CR.instr_valid_id & ex_is_rtype |-> `ID.instr_first_cycle_id_o)
 
-  # DataMemGntMaxDelay: have (data_req_o |-> ##[0:`TIME_LIMIT] data_gnt_i)
-  # DataMemRvalidMaxDelay: have (data_gnt_i |=> ##[0:`TIME_LIMIT] data_rvalid_i)
-  # InstrMemGntMaxDelay: have (instr_req_o |-> ##[0:`TIME_LIMIT] instr_gnt_i)
-  # InstrMemRvalidMaxDelay: have (instr_gnt_i |=> ##[0:`TIME_LIMIT] instr_rvalid_i)
+  DataMemGntMaxDelay: have (data_req_o |-> ##[0:`TIME_LIMIT] data_gnt_i)
+  DataMemRvalidMaxDelay: have (data_gnt_i |=> ##[0:`TIME_LIMIT] data_rvalid_i)
+  InstrMemGntMaxDelay: have (instr_req_o |-> ##[0:`TIME_LIMIT] instr_gnt_i)
+  InstrMemRvalidMaxDelay: have (instr_gnt_i |=> ##[0:`TIME_LIMIT] instr_rvalid_i)
 
   NormalMainResMatch: have (`ID.instr_valid_i && ~ex_kill && main_mode == MAIN_IDEX |-> spec_api_i.main_result == MAINRES_OK)
   FetchErrMainResMatch: have (`ID.instr_valid_i && ~ex_kill && main_mode == MAIN_IFERR |-> spec_api_i.main_result == MAINRES_OK)

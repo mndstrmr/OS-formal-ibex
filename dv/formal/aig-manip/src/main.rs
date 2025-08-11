@@ -5,9 +5,8 @@ use std::{
     io::{BufReader, BufWriter},
 };
 
-use aig::{AigEdge, AigNode, AigNodeType, TernarySimulate};
+use aig::{AigEdge, TernarySimulate};
 use clap::Parser;
-use clap::builder::TypedValueParser;
 use serde::Deserialize;
 
 #[derive(Deserialize, Debug)]
@@ -31,6 +30,35 @@ struct YWAMap {
 impl YWAMap {
     pub fn parse(reader: impl std::io::BufRead) -> YWAMap {
         serde_json::from_reader(reader).expect("Could not parse YWA json")
+    }
+
+    fn decode_name(s: &str) -> &str {
+        let (_, chunk) = s.rsplit_once('.').unwrap_or(("", s));
+        let (chunk, _) = chunk.split_once('$').unwrap_or((chunk, ""));
+        chunk
+    }
+
+    pub fn vmap_wires(&self, aig: &aig::Aig) -> impl Iterator<Item = VMapWire> {
+        self.asserts
+            .iter()
+            .enumerate()
+            .map(|(i, x)| (aig.bads[i], x))
+            .map(|(i, x)| VMapWire {
+                index: (i.node_id() << 1) | (!i.compl() as usize),
+                offset: 0,
+                path: YWAMap::decode_name(&x[0]).to_string(),
+            })
+            .chain(
+                self.assumes
+                    .iter()
+                    .enumerate()
+                    .map(|(i, x)| (aig.constraints[i], x))
+                    .map(|(i, x)| VMapWire {
+                        index: (i.node_id() << 1) | (i.compl() as usize),
+                        offset: 0,
+                        path: YWAMap::decode_name(&x[0]).to_string(),
+                    }),
+            )
     }
 }
 
@@ -346,6 +374,8 @@ struct Args {
 #[derive(clap::Subcommand, Debug)]
 enum Subcommand {
     Select {
+        #[clap(long)]
+        no_assumes: bool,
         out: String,
         ywa: String,
         step: usize,
@@ -360,6 +390,8 @@ enum Subcommand {
     Coi {
         vmap: String,
         name: String,
+        #[clap(long)]
+        ywmap: Option<String>,
     },
     SpecInputs {
         vmap: String,
@@ -377,7 +409,14 @@ enum Subcommand {
     },
 }
 
-fn select(mut aig: aig::Aig, out: String, ywa: String, step: usize, prop: Vec<String>) {
+fn select(
+    mut aig: aig::Aig,
+    out: String,
+    ywa: String,
+    step: usize,
+    prop: Vec<String>,
+    no_assumes: bool,
+) {
     let ywamap = YWAMap::parse(BufReader::new(
         std::fs::File::open(&ywa).expect("Could not open YWA file"),
     ));
@@ -409,7 +448,7 @@ fn select(mut aig: aig::Aig, out: String, ywa: String, step: usize, prop: Vec<St
                 println!("Keeping {name}");
             }
             b += 1;
-        } else if is_cover || pstep >= step {
+        } else if no_assumes || is_cover || pstep >= step {
             println!("Deleting {}", name);
             aig.bads.remove(b);
         } else if pstep < step {
@@ -428,9 +467,10 @@ fn simulate(aig: aig::Aig, ywa: String, vmap: String, trace: String, out: String
     let ywamap = YWAMap::parse(BufReader::new(
         std::fs::File::open(&ywa).expect("Could not open YWA file"),
     ));
-    let vmap = VMap::parse(BufReader::new(
+    let mut vmap = VMap::parse(BufReader::new(
         std::fs::File::open(vmap).expect("Could not open vmap"),
     ));
+    vmap.wires.extend(ywamap.vmap_wires(&aig));
 
     let mut vcd = vcd::Writer::new(BufWriter::new(
         std::fs::OpenOptions::new()
@@ -447,7 +487,6 @@ fn simulate(aig: aig::Aig, ywa: String, vmap: String, trace: String, out: String
     vcd.add_module("top").unwrap();
     hier.append_to_vcd(&mut vcd, &mut extract)
         .expect("Could not write wire hierarchy to VCD");
-    // FIXME: Add asserts and assumes to VCD
     vcd.upscope().unwrap();
     vcd.enddefinitions().unwrap();
 
@@ -501,13 +540,19 @@ fn simulate(aig: aig::Aig, ywa: String, vmap: String, trace: String, out: String
             }
         }
     }
+    vcd.timestamp(witness.inputs.len() as u64).unwrap();
 }
 
-fn coi(aig: aig::Aig, vmap: String, signal: String) {
-    let vmap = VMap::parse(BufReader::new(
+fn coi(aig: aig::Aig, vmap: String, signal: String, ywmap: Option<String>) {
+    let mut vmap = VMap::parse(BufReader::new(
         std::fs::File::open(vmap).expect("Could not open vmap"),
     ));
-
+    if let Some(ywmap) = ywmap {
+        let ywamap = YWAMap::parse(BufReader::new(
+            std::fs::File::open(&ywmap).expect("Could not open YWA file"),
+        ));
+        vmap.wires.extend(ywamap.vmap_wires(&aig));
+    }
     let hier = vmap.to_hierarchy();
     let group = hier.find(&signal.split(".").collect::<Vec<_>>());
     let Some(group) = group else {
@@ -728,14 +773,15 @@ fn main() {
             ywa,
             step,
             prop,
-        } => select(aig, out, ywa, step, prop),
+            no_assumes,
+        } => select(aig, out, ywa, step, prop, no_assumes),
         Subcommand::Simulate {
             ywa,
             vmap,
             trace,
             vcd: out,
         } => simulate(aig, ywa, vmap, trace, out),
-        Subcommand::Coi { vmap, name } => coi(aig, vmap, name),
+        Subcommand::Coi { vmap, name, ywmap } => coi(aig, vmap, name, ywmap),
         Subcommand::SpecInputs {
             vmap,
             trace,

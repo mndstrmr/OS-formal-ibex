@@ -43,8 +43,8 @@ build/psgen.sv: $(PSGEN) $(PSGEN_SRCS) Makefile
 	$(PSGEN) $(addprefix -path ,$(PSGEN_SRCS)) $(PSGEN_FLAGS) -sv-out build/psgen.sv -tcl-out build/psgen.tcl -clocking -covers -cover-assert -step-prefix -list build/proplist.txt
 
 # FIXME: This depends on fusesoc and ibexspec
-build/noprops.aig: build/psgen.sv build/fusesoc build/ibexspec.sv build_all.ys
-	cat build_all.ys | yosys -m $(LOWRISC_YOSYS_SLANG) -m ~/opt_muxtree/opt_muxtree_2.so -m ~/write_aiger/aiger.so
+build/all.aig: build/psgen.sv build/fusesoc build/ibexspec.sv build_all.ys $(LOWRISC_YOSYS_SLANG)
+	yosys -m $(LOWRISC_YOSYS_SLANG) -m ~/opt_muxtree/opt_muxtree_2.so -m ~/write_aiger/aiger.so -m ~/global_clock/global_clock.so -s ./build_all.ys
 
 .PHONY: jg
 jg: build/fusesoc build/psgen.sv build/ibexspec.sv

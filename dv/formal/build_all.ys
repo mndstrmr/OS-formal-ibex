@@ -2,23 +2,17 @@
 read_slang --top top -DSYNTHESIS -DSYMBIOSIS -DNO_PROPS -F slang.scr -I /nix/store/jpk5lrq1pakrf8cifgvickzp1p9fanzw-source/lib/sv/ --single-unit --no-proc
 setattr -set keep 1 n:\\*
 proc
+global_clk \clk_i
 opt_muxtree_2
 opt_muxtree_2
 opt_muxtree_2
 opt_clean
 
-scc -select; simplemap; select -clear
 memory_nordff
-async2sync
-chformal -assume -early
-formalff -setundef -clk2ff -ff2anyinit -hierarchy
 delete */t:$print
 setundef -undriven -anyseq
-# hierarchy -simcheck
-# flatten
 delete -output
 memory_map -formal
-# formalff -clk2ff -ff2anyinit
 
 # opt -fast
 # opt -full
@@ -31,7 +25,7 @@ techmap
 simplemap
 dffunmap
 opt_clean
-write_rtlil build/noprops.2.il
-write_smt2 build/noprops.smt2
+write_rtlil build/all.il
+write_smt2 build/all.smt2
 aigmap
-write_aiger_2 -I -B -zinit -no-startoffset -ywmap build/noprops.aig.map -vmap build/noprops.aig.vmap build/noprops.aig
+write_aiger_2 -I -B -zinit -no-startoffset -ywmap build/all.ywmap -vmap build/all.vmap build/all.aig

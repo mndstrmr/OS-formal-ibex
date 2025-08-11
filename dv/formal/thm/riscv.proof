@@ -86,6 +86,7 @@ lemma riscv
     use structure_fast
     /
     use spec_compliant
+    FalseCheck: have (##3 ~`IS_AUIPC)
 
   Fence:
   in Fence:(`IS_FENCE) FenceI:(`IS_FENCEI)
