@@ -18,10 +18,12 @@ oldprint = print
 def print(*args):
     timestr = datetime.now().strftime('[%d/%m/%y %H:%M:%S.%f]')
     oldprint(gray(timestr), *args)
+    if not "NO_LOG" in os.environ:
+        with open("logfile.txt", "a") as f:
+            oldprint(timestr, *[re.sub("\033\\[[0-9;]+m", "", str(x)) for x in args], file=f)
+if not "NO_LOG" in os.environ:
     with open("logfile.txt", "a") as f:
-        oldprint(timestr, *[re.sub("\033\\[[0-9;]+m", "", str(x)) for x in args], file=f)
-with open("logfile.txt", "a") as f:
-    f.write("\n")
+        f.write("\n")
 
 def green(s): return f"\033[32;1m{s}\033[0m"
 def red(s): return f"\033[31;1m{s}\033[0m"
@@ -229,9 +231,10 @@ def proof_done(engine_config, path, step, props, results):
     dt = results[2]
     mem = mem or 0.0
     dt = dt or 0.0
-    with open("prooflog.txt", "a") as f:
-        json.dump([time.time(), props, step, code, mem, dt, ROOT_HASH], f)
-        f.write("\n")
+    if not "NO_LOG" in os.environ:
+        with open("prooflog.txt", "a") as f:
+            json.dump([time.time(), props, step, code, mem, dt, ROOT_HASH, engine_config], f)
+            f.write("\n")
     match code:
         case 20:
             print(green(f"UNSAT: {len(props)} properties in step {step} proven in {dt:.3f}s with {mem:.3f}GB"))
@@ -444,20 +447,42 @@ SKIPPED_PROPS = [
     # (2, "Ibex_Memory_IdleActive_WaitGntMis_Inv"),
     # (2, "Ibex_Memory_IdleActive_WaitGnt_Inv"),
     # (2, "Ibex_Memory_IdleActive_Step"),
-    (2, 'Ibex_Memory_Step_Step'),
-    (2, 'Ibex_Memory_IdleActive_Step'),
-    (2, 'Ibex_Memory_StepFail_Step'),
-    (2, 'Ibex_Memory_WaitRvalidMisGntsDone_WaitRvalidMisGntsDone_Inv'),
-    (2, 'Ibex_Memory_WaitRvalidMis_WaitGnt_Inv'),
-    (2, 'Ibex_Memory_WaitRvalidMisGntsDone_Step_Inv'),
+    # (2, 'Ibex_Memory_Step_Step'),
+    # (2, 'Ibex_Memory_IdleActive_Step'),
+    # (2, 'Ibex_Memory_StepFail_Step'),
+    # (2, 'Ibex_Memory_WaitRvalidMisGntsDone_WaitRvalidMisGntsDone_Inv'),
+    # (2, 'Ibex_Memory_WaitRvalidMis_WaitGnt_Inv'),
+    # (2, 'Ibex_Memory_WaitRvalidMisGntsDone_Step_Inv'),
 
-    (3, "Ibex_Memory_End_Rev"),
+    # (3, "Ibex_Memory_End_Rev"),
 
     # (5, "Ibex_BecameDecodeIsEmptyWbexc"),
     # (5, "Ibex_BecameDecodeIsInstrStart"),
-    (5, "Ibex_DivInstrNotMult"),
-    (5, "Ibex_MultEndState"),
+    # (5, "Ibex_DivInstrNotMult"),
+    # (5, "Ibex_MultEndState"),
 
+
+    # (10, 'FetchErr_CSR'),
+    (10, 'UType_Auipc_FalseCheck'),
+    (10, 'UType_Lui_FalseCheck'),
+    # (10, 'MType_Div_PC'),
+    # (10, 'MType_Rem_PC'),
+    # (10, 'MType_Mul_PC'),
+    # (10, 'MType_DivU_PC'),
+    (10, 'MType_Div_Data'),
+    # (10, 'MType_RemU_PC'),
+    (10, 'MType_Rem_Data'),
+    # (10, 'MType_MulH_PC'),
+    (10, 'MType_Mul_Data'),
+    # (10, 'MType_MulHU_PC'),
+    (10, 'MType_RemU_Data'),
+    # (10, 'MType_MulHSH_PC'),
+    (10, 'MType_MulH_Data'),
+    (10, 'MType_DivU_Data'),
+    (10, 'MType_MulHU_Data'),
+    (10, 'MType_MulHSH_Data'),
+    # (12, 'Mem_NoMem'),
+    
     # (6, "Ibex_SpecStableStoreSndData"),
     # (6, "Ibex_FetchErrRoot"),
     # (6, "Ibex_FirstCycleNoGnt"),
@@ -510,8 +535,9 @@ def missing_from(strategy, props):
 
 async def bmc_mode(props):
     if len(props) == 1:
-        print(white(f"Doing unbounded BMC for step {i} on {prop} from step {step}"))
-        await bmc(step, [prop], start=i)
+        step, prop = props[0]
+        print(white(f"Doing unbounded BMC for step on {prop} from step {step}"))
+        await bmc(step, [prop], start=args.bmc_start)
         return
 
     i = args.bmc_start
@@ -670,7 +696,7 @@ async def main():
 
     by_step = group_by_step(names)
     props = []
-    for name in args.properties:
+    for prop in args.properties:
         for step, name in names:
             if prop == name:
                 props.append((step, prop))

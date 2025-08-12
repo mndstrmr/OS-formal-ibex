@@ -1,0 +1,1 @@
+[[20, ["Top_CSR"], "rIC3 -e kind --no-preproc", [20, 14.001033782958984, 89.68403673171997, "OK", "RESULT: UNSAT\n"]], [20, ["Top_PC"], "rIC3 -e kind --no-preproc", [20, 15.888809204101562, 158.93511319160461, "OK", "RESULT: UNSAT\n"]], [20, ["Top_Addr", "Top_Data"], "rIC3 -e kind --no-preproc", [20, 13.192188262939453, 36.75874924659729, "OK", "RESULT: UNSAT\n"]]]
