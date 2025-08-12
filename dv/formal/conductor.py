@@ -8,8 +8,20 @@ import os
 from math import floor
 from types import CoroutineType
 from typing import Any, Coroutine, TypeVar
+from datetime import datetime
+import re
+import hashlib
 
 # --------------------- Utilities ----------------------
+
+oldprint = print
+def print(*args):
+    timestr = datetime.now().strftime('[%d/%m/%y %H:%M:%S.%f]')
+    oldprint(gray(timestr), *args)
+    with open("logfile.txt", "a") as f:
+        oldprint(timestr, *[re.sub("\033\\[[0-9;]+m", "", str(x)) for x in args], file=f)
+with open("logfile.txt", "a") as f:
+    f.write("\n")
 
 def green(s): return f"\033[32;1m{s}\033[0m"
 def red(s): return f"\033[31;1m{s}\033[0m"
@@ -217,6 +229,9 @@ def proof_done(engine_config, path, step, props, results):
     dt = results[2]
     mem = mem or 0.0
     dt = dt or 0.0
+    with open("prooflog.txt", "a") as f:
+        json.dump([time.time(), props, step, code, mem, dt, ROOT_HASH], f)
+        f.write("\n")
     match code:
         case 20:
             print(green(f"UNSAT: {len(props)} properties in step {step} proven in {dt:.3f}s with {mem:.3f}GB"))
@@ -278,7 +293,7 @@ async def explore(step, props, configs, timeout=0.0, debug_slow=None) -> asyncio
 
     async def explore_one(engine_config, idx, expected_memory):
         result = await shell(f"{engine_config} {specialised}", timeout=timeout, expected_memory=expected_memory, debug_slow=debug_slow)
-        proof_done(engine_config, step, props, result)
+        proof_done(engine_config, specialised, step, props, result)
         if result[0] in {10, 20}:
             won_race((engine_config, result))
     
@@ -399,6 +414,7 @@ parser.add_argument("--fresh", action="store_true", help="In explore mode, do no
 parser.add_argument("--no-store", action="store_true", help="In explore mode, do not store constructed proof strategies.")
 parser.add_argument("--by-step", action="store_true", help="In prove mode, do proofs one step at a time")
 parser.add_argument("-p", "--properties", nargs="*", default=[], help="Restrict to only the properties with the given names, otherwise all properties. Especially helpful for BMC.")
+parser.add_argument("--missing", action="store_true", help="Equivalent to -p <each property that is not skipped but has no proof in a step where there are some proofs>")
 parser.add_argument("-s", "--start", type=int, default=0, help="First step to start at. (default: 0)")
 parser.add_argument("--bmc-step", type=int, default=1, help="Step size for BMC. (default: 1)")
 parser.add_argument("--bmc-start", type=int, default=4, help="Start length for BMC. (default: 4)")
@@ -469,46 +485,110 @@ SKIPPED_PROPS = [
 if len(SKIPPED_PROPS) > 0:
     print(orange(f"WARNING: Skipped properties are {' '.join([x[1] for x in SKIPPED_PROPS])}"))
 
-HIGH_LEVEL_STRATEGY = [
-    "normal", # 0
-    "normal", # 1
-    "normal", # 2
-    # "properties", # 2
-    "normal", # 3
-    "normal", # 4
-    "normal", # 5
-    "properties", # 6
-    "normal", # 7
-    "normal", # 8
-    "prefix", # 9
-]
+with open("build/all.aig", "rb") as f:
+    ROOT_HASH = hashlib.new("sha256", f.read()).hexdigest()
+print(f"build/all.aig has sha256 {ROOT_HASH}")
 
-async def get_strategy(step, props):
-    strategy = []
-    if not args.fresh:
-        try:
-            with open(f"strategies/step{step}.json", "r") as f:
-                print(white(f"Loading strategy for step {step} from cache"))
-                strategy = json.load(f)
-        except FileNotFoundError:
-            pass
-        except json.JSONDecodeError as e:
-            print(red(f"Error decoding step{step}.json (ignoring): {e}"))
-    if args.mode == "prove" or args.mode == "info":
-        if len(strategy) == 0:
-            print(orange(f"Step {step} has no strategy, skipping"))
-            return False, None
-        return False, strategy
+def load_strategy(step):
+    if args.fresh:
+        return None
+    try:
+        with open(f"strategies/step{step}.json", "r") as f:
+            print(white(f"Loading strategy for step {step} from cache"))
+            return json.load(f)
+    except FileNotFoundError:
+        pass
+    except json.JSONDecodeError as e:
+        print(red(f"Error decoding step{step}.json (ignoring): {e}"))
+    return None
 
+def missing_from(strategy, props):
     done_props = []
     for strategy_step in strategy:
         done_props.extend(strategy_step[1])
-    not_done = list(set(props).difference(done_props))
+    return list(set(props).difference(done_props))
+
+async def bmc_mode(props):
+    if len(props) == 1:
+        print(white(f"Doing unbounded BMC for step {i} on {prop} from step {step}"))
+        await bmc(step, [prop], start=i)
+        return
+
+    i = args.bmc_start
+    while True:
+        for step, prop in props:
+            print(white(f"Doing BMC at depth {i} on {prop} from step {step}"))
+            await bmc(step, [prop], start=i, end=i)
+        i += args.bmc_step
+
+async def info_mode(by_step, by_step_skipped):
+    for step, props in enumerate(by_step):
+        strategy = load_strategy(step)
+        if strategy is None:
+            print(orange(f"No proof strategy entry for step {step}"))
+            strategy = []
+        accounted_for = []
+        for stepi in strategy:
+            print(f"Step {stepi[0]} :: {stepi[3][3]} :: {stepi[3][1]:.3f}GB/{stepi[3][2]:.3f}s :: {stepi[2]} :: {' '.join(stepi[1])}")
+            accounted_for.extend(stepi[1])
+        if len(by_step_skipped[step]) > 0:
+            print(orange(f"Step {step} :: SKIPPED :: :: :: {' '.join(by_step_skipped[step])}"))
+        unaccounted = []
+        for prop in by_step[step]:
+            if prop not in accounted_for:
+                unaccounted.append(prop)
+        if len(unaccounted) > 0:
+            print(red(f"Step {step} :: UNACCOUNTED :: :: :: {' '.join(unaccounted)}"))
+
+async def prove_mode(by_step):
+    all_strategies = []
+    for step, props in enumerate(by_step):
+        if step < args.start:
+            print(orange(f"Skipping step {step}"))
+            continue
+        strategy = load_strategy(step)
+        if strategy is None or len(strategy) == 0:
+            print(orange(f"No strategy for step {step}, skipping"))
+            continue
+
+        if args.by_step:
+            print(white(f"Running strategy for step {step} ({len(props)} properties)"))
+            run_start = time.time()
+            await run_strategy(strategy)
+            run_dt = time.time() - run_start
+            print(white(f"Ran strategy for step {step} in {run_dt:.3f}s"))
+        else:
+            all_strategies.extend(strategy)
+
+    if not args.by_step:
+        print(white(f"Running strategy for everything"))
+        run_start = time.time()
+        await run_strategy(all_strategies)
+        run_dt = time.time() - run_start
+        print(white(f"Ran strategy in {run_dt:.3f}s"))
+
+async def construct_strategy(step, props):
+    strategy = load_strategy(step) or []
+    not_done = missing_from(strategy, props)
     if len(not_done) == 0:
         return False, strategy
 
     print(white(f"Building strategy for step {step} ({len(not_done)}/{len(props)} properties remaining)"))
     build_start = time.time()
+
+    HIGH_LEVEL_STRATEGY = [
+        "normal", # 0
+        "normal", # 1
+        "normal", # 2
+        # "properties", # 2
+        "normal", # 3
+        "normal", # 4
+        "normal", # 5
+        "properties", # 6
+        "normal", # 7
+        "normal", # 8
+        "prefix", # 9
+    ]
 
     highlevel = "normal"
     if step < len(HIGH_LEVEL_STRATEGY):
@@ -519,14 +599,6 @@ async def get_strategy(step, props):
             print(white("strategy: name based recursive splitting, linear fallback"))
             blocks = split_by_prefixes(not_done)
             strategy += await build_strategy_rec(step, blocks)
-        # case "small":
-        #     print(white("strategy: small initial chunk, recursive splitting"))
-        #     strategy = await build_strategy(step, props, max_chunk=4)
-        # case "prefix":
-        #     print(white("strategy: initially split by prefix"))
-        #     print(blocks)
-        #     exit(1)
-            # strategy = await build_strategy(step, props, max_chunk=4)
         case "properties":
             print(white("strategy: each property"))
             for x in await asyncio.gather(*[build_strategy_rec(step, [prop]) for prop in not_done]):
@@ -550,6 +622,25 @@ async def get_strategy(step, props):
             print(red(f"ERROR: Could not save strategy: {e}"))
     return True, strategy
 
+async def explore_mode(by_step):
+    for step, props in enumerate(by_step):
+        if step < args.start:
+            print(orange(f"Skipping step {step}"))
+            continue
+
+        new, strategy = await construct_strategy(step, props)
+        if new:
+            print(gray(f"All failures to date: {failures}"))
+        
+        if not new or len(strategy) != 1:
+            print(white(f"Running strategy for step {step} ({len(props)} properties)"))
+            run_start = time.time()
+            await run_strategy(strategy)
+            run_dt = time.time() - run_start
+            print(white(f"Ran strategy for step {step} in {run_dt:.3f}s"))
+        else:
+            print(white(f"Skipping proof run for step {step}, since it has just one step"))         
+
 async def main():
     def preproc_name(name):
         first = name.split("$")[1][5:]
@@ -558,73 +649,61 @@ async def main():
         step = int(step[4:])
         return step, rest
 
+    def group_by_step(names, max=None):
+        by_step = []
+        for step, name in names:
+            while step >= len(by_step):
+                by_step.append([])
+            by_step[step].append(name)
+        if max is not None:
+            while max >= len(by_step):
+                by_step.append([])
+        return by_step
+
     process_runner.start_loop()
 
     print(white("Reading property list"))
     with open("build/all.ywmap") as f:
         names = [preproc_name(x[0]) for x in json.load(f)["asserts"]]
-    by_step = []
-    by_step_skipped = []
-    for step, name in names:
-        while step >= len(by_step):
-            by_step.append([])
-            by_step_skipped.append([])
-        if not name in args.properties and ((step, name) in SKIPPED_PROPS or name.endswith("_Cover") or len(args.properties) > 0):
-            by_step_skipped[step].append(name)
-            continue
-        by_step[step].append(name)
+    max_step = max(step for step, _ in names)
+    names = [(step, name) for step, name in names if not name.endswith("_Cover")]
 
-    if args.mode == "bmc":
-        for i in range(args.bmc_start, 999, args.bmc_step):
-            for step, props in enumerate(by_step):
-                for prop in props:
-                    print(white(f"Doing BMC for step {i} on {prop} from step {step}"))
-                    if len(args.properties) == 1:
-                        await bmc(step, [prop], start=i)
-                        return
-                    else:
-                        await bmc(step, [prop], start=i, end=i)
-        return
-        
-    all_strategy_steps = []
-    for step, props in enumerate(by_step):
-        if step < args.start:
-            print(orange(f"Skipping step {step}"))
-            continue
-
-        new, strategy = await get_strategy(step, props)
-        if args.mode == "explore":
-            print(gray(f"All failures to date: {failures}"))
-        if strategy is None:
-            continue
-        if args.mode == "prove" and not args.by_step:
-            all_strategy_steps.extend(strategy)
-            continue
-        if args.mode == "info":
-            accounted_for = []
-            for stepi in strategy:
-                print(f"Step {stepi[0]} :: {stepi[3][3]} :: {stepi[3][1]:.3f}GB/{stepi[3][2]:.3f}s :: {stepi[2]} :: {' '.join(stepi[1])}")
-                accounted_for.extend(stepi[1])
-            print(orange(f"Step {step} :: SKIPPED :: :: :: {' '.join(by_step_skipped[step])}"))
-            for prop in by_step[step]:
-                if prop not in accounted_for:
-                    print(red(f"Step {step} :: UNACCOUNTED :: :: :: {prop}"))
-            continue
-        
-        if not new or len(strategy) != 1 or args.mode == "prove":
-            print(white(f"Running strategy for step {step} ({len(props)} properties)"))
-            run_start = time.time()
-            await run_strategy(strategy)
-            run_dt = time.time() - run_start
-            print(white(f"Ran strategy for step {step} in {run_dt:.3f}s"))
+    by_step = group_by_step(names)
+    props = []
+    for name in args.properties:
+        for step, name in names:
+            if prop == name:
+                props.append((step, prop))
+                break
         else:
-            print(white(f"Skipping proof run for step {step}, since it has just one step"))
+            print(red(f"ERROR: Property not found {prop}"))
+            exit(1)
+    if args.missing:
+        for step, sprops in enumerate(by_step):
+            strategy = load_strategy(step)
+            if strategy is None:
+                continue
+            props.extend([(step, p) for p in missing_from(strategy, sprops)])
+    elif len(props) == 0:
+        props = names
+    props_skipped = [(step, p) for step, p in props if (step, p) in SKIPPED_PROPS]
+    props = [(step, p) for step, p in props if (step, p) not in SKIPPED_PROPS]
 
-    if args.mode == "prove" and not args.by_step:
-        print(white(f"Running strategy for everything"))
-        run_start = time.time()
-        await run_strategy(all_strategy_steps)
-        run_dt = time.time() - run_start
-        print(white(f"Ran strategy for everything in {run_dt:.3f}s"))
+    if len(props) == 0 and len(props_skipped) == 0:
+        print(orange("Warning: Empty property selection"))
+
+    skipped_by_step = group_by_step(props_skipped, max_step)
+    by_step = group_by_step(props, max_step)
+
+    match args.mode:
+        case "bmc":
+            await bmc_mode(props)
+        case "info":
+            await info_mode(by_step, skipped_by_step)
+        case "prove":
+            await prove_mode(by_step)
+        case "explore":
+            await explore_mode(by_step)
+        
 
 asyncio.run(main())
