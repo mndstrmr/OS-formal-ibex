@@ -195,6 +195,8 @@
                 ric3
                 toolchain.cargo
                 toolchain.rustc
+                cmake
+                clang
               ]);
               shellHook = exports + dev_msg + ''
                 export LOWRISC_YOSYS_SLANG=${lowrisc_yosys_slang.out}/lib/slang.so

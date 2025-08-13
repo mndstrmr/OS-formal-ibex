@@ -43,7 +43,7 @@ build/psgen.sv: $(PSGEN) $(PSGEN_SRCS) Makefile
 	$(PSGEN) $(addprefix -path ,$(PSGEN_SRCS)) $(PSGEN_FLAGS) -sv-out build/psgen.sv -tcl-out build/psgen.tcl -clocking -covers -cover-assert -step-prefix -list build/proplist.txt
 
 build/all.aig: build/psgen.sv build/fusesoc build/ibexspec.sv build_all.ys $(LOWRISC_YOSYS_SLANG) build/yosys_formal.so
-	yosys -m $(LOWRISC_YOSYS_SLANG) -m build/yosys_formal.so -s ./build_all.ys
+	yosys -m $(LOWRISC_YOSYS_SLANG) -m build/yosys_formal.so -v 1 -s <(cat ./build_all.ys | sed "s|LOWRISC_SAIL_SRC|$(LOWRISC_SAIL_SRC)|g")
 
 build/yosys_formal.so: yosys_formal/global_clock.cc yosys_formal/write_aiger.cc yosys_formal/opt_muxtree.cc
 	yosys-config --build build/yosys_formal.so yosys_formal/global_clock.cc yosys_formal/write_aiger.cc yosys_formal/opt_muxtree.cc
