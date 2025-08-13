@@ -191,12 +191,17 @@
                 lowrisc_yosys_slang
                 (pkgs.yosys.override (attrs: { enablePython = false; }))
               ] ++ (with pkgs; [
-                gtkwave # not stricly necesssary, but definitely useful for a dev shell
+                gtkwave # not stricly necesssary
                 ric3
+
+                # aig-manip
                 toolchain.cargo
                 toolchain.rustc
                 cmake
                 clang
+
+                # yosys-config
+                gcc
               ]);
               shellHook = exports + dev_msg + ''
                 export LOWRISC_YOSYS_SLANG=${lowrisc_yosys_slang.out}/lib/slang.so

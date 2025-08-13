@@ -178,7 +178,7 @@ class ProcessRunner:
     def poll(self):
         # Kill recently started processes until memory is OK, unless there is just one, then there's no point
         free = global_memory_free()
-        while free < ProcessRunner.GLOBAL_MEMORY_BUFFER and len(self.running) > 1:
+        while not args.no_kill and free < ProcessRunner.GLOBAL_MEMORY_BUFFER and len(self.running) > 1:
             last = self.running.pop()
             last.kill_restart()
             free += max(last.max_memory, 3)
@@ -316,7 +316,7 @@ async def build_strategy_rec(step, prop_tree, eager=False, difficult=False):
             ("rIC3", 10),
             # ("rIC3 --no-preproc", 20),
             ("rIC3 -e kind --no-preproc", 10),
-            ("rIC3 -e kind", 10)
+            # ("rIC3 -e kind", 10)
         ]
     else:
         ENGINES = [
@@ -421,23 +421,11 @@ parser.add_argument("--bmc-step", type=int, default=1, help="Step size for BMC. 
 parser.add_argument("--bmc-start", type=int, default=4, help="Start length for BMC. (default: 4)")
 parser.add_argument("--hard", action="store_true", help="In explore mode, try harder to prove properties (1hr timeout, more engines).")
 parser.add_argument("--no-run", action="store_true", help="In explore mode don't run proofs again to check steps.")
+parser.add_argument("--no-kill", action="store_true", help="Don't kill proof processes due to running out of memory.")
 args = parser.parse_args()
 
 SKIPPED_PROPS = [
-    (1, "Ibex_SpecPastReg"),
-    (1, "Ibex_SpecPastWbexc_Mcause"),
-    (1, "Ibex_SpecPastWbexc_Mcounteren"),
-    (1, "Ibex_SpecPastWbexc_Mepc"),
-    (1, "Ibex_SpecPastWbexc_Mie"),
-    (1, "Ibex_SpecPastWbexc_Mscratch"),
-    (1, "Ibex_SpecPastWbexc_Mseccfg"),
-    (1, "Ibex_SpecPastWbexc_Mstatus"),
-    (1, "Ibex_SpecPastWbexc_Mtval"),
-    (1, "Ibex_SpecPastWbexc_Mtvec"),
-    (1, "Ibex_SpecPastWbexc_Pc"),
-    (1, "Ibex_SpecPastWbexc_Pmp_addr"),
-    (1, "Ibex_SpecPastWbexc_Pmp_cfg"),
-    (1, "Ibex_SpecPastWbexc_Priv"),
+    # (1, "Ibex_SpecPastReg"),
 
     (2, "Ibex_Memory_WaitRvalidMisGntsDone_Step_Inv"),
     (2, "Ibex_Memory_WaitRvalidMisGntsDone_WaitRvalidMisGntsDone_Inv"),

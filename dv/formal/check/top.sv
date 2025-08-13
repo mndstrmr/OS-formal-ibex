@@ -243,7 +243,7 @@ logic ex_has_compressed_instr;
 logic wbexc_post_int_err; // Spec had an internal error
 
 logic [31:0] wbexc_post_wX;
-logic [5:0] wbexc_post_wX_addr;
+logic [4:0] wbexc_post_wX_addr;
 logic wbexc_post_wX_en;
 
 `define X(n) wbexc_post_``n
