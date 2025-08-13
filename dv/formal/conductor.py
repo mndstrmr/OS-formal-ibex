@@ -108,7 +108,7 @@ class Process:
 
     def start(self):
         print("$", self.cmd)
-        self.proc = subprocess.Popen(self.cmd, shell=True, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        self.proc = subprocess.Popen(self.cmd, shell=True, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         self.start_time = time.time()
         self.max_memory = 0
 
@@ -126,7 +126,7 @@ class Process:
         if code is not None and self.kill_ == None:
             print(f"Finished `{self.cmd}` ({dt:.3f}s) ({self.max_memory:.3f}GB)")
             if not self.future.cancelled():
-                self.future.set_result((code, self.max_memory, dt, "OK", self.proc.stdout.read().decode()))
+                self.future.set_result((code, self.max_memory, dt, "OK", self.proc.stdout.read().decode(), self.proc.stderr.read().decode()))
             return True
         elif self.kill_ == "restart":
             print(gray(f"Kill (will restart) `{self.cmd}` ({dt:.3f}s) ({self.max_memory:.3f}GB)"))
@@ -139,13 +139,13 @@ class Process:
             print(f"Kill `{self.cmd}` ({dt:.3f}s) ({self.max_memory:.3f}GB)")
             self.proc.kill()
             if not self.future.cancelled():
-                self.future.set_result((None, self.max_memory, dt, "TIMEOUT", None))
+                self.future.set_result((None, self.max_memory, dt, "TIMEOUT", None, self.proc.stderr.read().decode()))
             return True
         elif self.kill_ == "kill":
             print(gray(f"Kill (uninterested) `{self.cmd}` ({dt:.3f}s) ({self.max_memory:.3f}GB)"))
             self.proc.kill()
             if not self.future.cancelled():
-                self.future.set_result((None, self.max_memory, dt, "UNINTERESTED", None))
+                self.future.set_result((None, self.max_memory, dt, "UNINTERESTED", None, self.proc.stderr.read().decode()))
             return True
 
         self.max_memory = max(pid_memory_used(self.proc.pid), self.max_memory)
@@ -227,10 +227,8 @@ async def prepare_aiger(step, props):
 
 def proof_done(engine_config, path, step, props, results):
     code = results[0]
-    mem = results[1]
-    dt = results[2]
-    mem = mem or 0.0
-    dt = dt or 0.0
+    mem = results[1] or 0.0
+    dt = results[2] or 0.0
     if not "NO_LOG" in os.environ:
         with open("prooflog.txt", "a") as f:
             json.dump([time.time(), props, step, code, mem, dt, ROOT_HASH, engine_config], f)
@@ -333,7 +331,7 @@ async def build_strategy_rec(step, prop_tree, eager=False, difficult=False):
 
     if len(all_props) == 1:
         while True:
-            res = await explore(step, all_props, timeout=1200.0 if difficult else 600.0, configs=ENGINES, debug_slow=lambda dt: print(gray(f"Still exploring step {step} property {all_props[0]} ({dt:.3f}s)")))
+            res = await explore(step, all_props, timeout=1800.0 if difficult else 600.0, configs=ENGINES, debug_slow=lambda dt: print(gray(f"Still exploring step {step} property {all_props[0]} ({dt:.3f}s)")))
             if res is not None:
                 print(green(f"Constructed proof for 1 property in step {step}: {all_props[0]}"))
                 return [(step, all_props, res[0], res[1])]
@@ -342,7 +340,7 @@ async def build_strategy_rec(step, prop_tree, eager=False, difficult=False):
             return []
 
     if len(prop_tree) == 1:
-        return await build_strategy_rec(step, prop_tree[0])
+        return await build_strategy_rec(step, prop_tree[0], difficult=difficult)
 
     async def without_split():
         res = await explore(step, all_props, timeout=120.0, configs=ENGINES)
@@ -365,10 +363,10 @@ async def build_strategy_rec(step, prop_tree, eager=False, difficult=False):
             await asyncio.sleep(20.0) # Give the rest a tiny head start anyway
 
         if len(children) == 0:
-            solutions = await asyncio.gather(*[build_strategy_rec(step, [child]) for child in rest])
+            solutions = await asyncio.gather(*[build_strategy_rec(step, [child], difficult=difficult) for child in rest])
         else:
             children.append(rest)
-            solutions = await asyncio.gather(*[build_strategy_rec(step, tree) for tree in children])
+            solutions = await asyncio.gather(*[build_strategy_rec(step, tree, difficult=difficult) for tree in children])
         flattened = []
         for solution in solutions:
             flattened.extend(solution)
@@ -421,6 +419,8 @@ parser.add_argument("--missing", action="store_true", help="Equivalent to -p <ea
 parser.add_argument("-s", "--start", type=int, default=0, help="First step to start at. (default: 0)")
 parser.add_argument("--bmc-step", type=int, default=1, help="Step size for BMC. (default: 1)")
 parser.add_argument("--bmc-start", type=int, default=4, help="Start length for BMC. (default: 4)")
+parser.add_argument("--hard", action="store_true", help="In explore mode, try harder to prove properties (1hr timeout, more engines).")
+parser.add_argument("--no-run", action="store_true", help="In explore mode don't run proofs again to check steps.")
 args = parser.parse_args()
 
 SKIPPED_PROPS = [
@@ -439,73 +439,40 @@ SKIPPED_PROPS = [
     (1, "Ibex_SpecPastWbexc_Pmp_cfg"),
     (1, "Ibex_SpecPastWbexc_Priv"),
 
-    # (2, "Ibex_Memory_WaitRvalidMis_WaitGnt_Inv"),
-    # (2, "Ibex_Memory_WaitRvalidMisGntsDone_Step_Inv"),
-    # (2, "Ibex_Memory_WaitRvalidMisGntsDone_WaitRvalidMisGntsDone_Inv"),
-    # (2, "Ibex_Memory_Step_Step"),
-    # (2, "Ibex_Memory_StepFail_Step"),
-    # (2, "Ibex_Memory_IdleActive_WaitGntMis_Inv"),
-    # (2, "Ibex_Memory_IdleActive_WaitGnt_Inv"),
-    # (2, "Ibex_Memory_IdleActive_Step"),
-    # (2, 'Ibex_Memory_Step_Step'),
-    # (2, 'Ibex_Memory_IdleActive_Step'),
-    # (2, 'Ibex_Memory_StepFail_Step'),
-    # (2, 'Ibex_Memory_WaitRvalidMisGntsDone_WaitRvalidMisGntsDone_Inv'),
-    # (2, 'Ibex_Memory_WaitRvalidMis_WaitGnt_Inv'),
-    # (2, 'Ibex_Memory_WaitRvalidMisGntsDone_Step_Inv'),
+    (2, "Ibex_Memory_WaitRvalidMisGntsDone_Step_Inv"),
+    (2, "Ibex_Memory_WaitRvalidMisGntsDone_WaitRvalidMisGntsDone_Inv"),
+    
+    (3, "Ibex_Memory_End_Rev"),
 
-    # (3, "Ibex_Memory_End_Rev"),
+    (5, "Ibex_BecameDecodeIsEmptyWbexc"),
+    (5, "Ibex_BecameDecodeIsInstrStart"),
+    (5, "Ibex_DivInstrNotMult"),
+    (5, "Ibex_MultEndState"),
 
-    # (5, "Ibex_BecameDecodeIsEmptyWbexc"),
-    # (5, "Ibex_BecameDecodeIsInstrStart"),
-    # (5, "Ibex_DivInstrNotMult"),
-    # (5, "Ibex_MultEndState"),
+    (6, "Ibex_MemStartFirstCycle"),
+    (6, "Ibex_FirstCycleNoGnt"),
+    (6, "Ibex_PreNextPcMatch"),
+    (6, "Ibex_NewIdFSM"),
 
+    # Just are provable, they just take too long
+    (10, 'MType_Div_PC'),
+    (10, 'MType_Rem_PC'),
+    (10, 'MType_DivU_PC'),
+    (10, 'MType_RemU_PC'),
 
-    # (10, 'FetchErr_CSR'),
+    (12, 'Mem_NoMem'),
+
+    # These are not intended to be enabled, the rest are
     (10, 'UType_Auipc_FalseCheck'),
     (10, 'UType_Lui_FalseCheck'),
-    # (10, 'MType_Div_PC'),
-    # (10, 'MType_Rem_PC'),
-    # (10, 'MType_Mul_PC'),
-    # (10, 'MType_DivU_PC'),
     (10, 'MType_Div_Data'),
-    # (10, 'MType_RemU_PC'),
     (10, 'MType_Rem_Data'),
-    # (10, 'MType_MulH_PC'),
     (10, 'MType_Mul_Data'),
-    # (10, 'MType_MulHU_PC'),
     (10, 'MType_RemU_Data'),
-    # (10, 'MType_MulHSH_PC'),
     (10, 'MType_MulH_Data'),
     (10, 'MType_DivU_Data'),
     (10, 'MType_MulHU_Data'),
     (10, 'MType_MulHSH_Data'),
-    # (12, 'Mem_NoMem'),
-    
-    # (6, "Ibex_SpecStableStoreSndData"),
-    # (6, "Ibex_FetchErrRoot"),
-    # (6, "Ibex_FirstCycleNoGnt"),
-    # (6, "Ibex_PreNextPcMatch"),
-    # (6, "Ibex_SpecStableStore"),
-    # (6, "Ibex_SpecStableStoreAddr"),
-    # (6, "Ibex_SpecStableStoreData"),
-    # (6, "Ibex_LoadNotSpecWrite"),
-    # (6, "Ibex_NewIdFSM"),
-    # (6, "Ibex_SpecStableStoreSndAddr"),
-    # (6, "Ibex_SpecStableStoreSnd"),
-
-    # (7, "Ibex_IRQMainResMatch"),
-
-    # (8, "Ibex_SpecEnUnreach"),
-
-    # (9, "Mem_EarlyLSUCtrlMatch"),
-    # (9, "Mem_LoadPMPErrorWx"),
-    
-    # (10, "Fence_FenceI_PC"),
-    # (10, "FetchErr_CSR"),
-
-    # (21, "RegMatch_14"),
 ]
 if len(SKIPPED_PROPS) > 0:
     print(orange(f"WARNING: Skipped properties are {' '.join([x[1] for x in SKIPPED_PROPS])}"))
@@ -540,6 +507,9 @@ async def bmc_mode(props):
         await bmc(step, [prop], start=args.bmc_start)
         return
 
+    if len(props) == 0:
+        print(red("No properties to do BMC on!"))
+        return
     i = args.bmc_start
     while True:
         for step, prop in props:
@@ -599,7 +569,7 @@ async def construct_strategy(step, props):
     if len(not_done) == 0:
         return False, strategy
 
-    print(white(f"Building strategy for step {step} ({len(not_done)}/{len(props)} properties remaining)"))
+    print(white(f"Building strategy for step {step} ({len(not_done)}/{len(props)} properties)"))
     build_start = time.time()
 
     HIGH_LEVEL_STRATEGY = [
@@ -616,24 +586,27 @@ async def construct_strategy(step, props):
         "prefix", # 9
     ]
 
-    highlevel = "normal"
-    if step < len(HIGH_LEVEL_STRATEGY):
+    if args.hard:
+        highlevel = "properties"
+    elif step < len(HIGH_LEVEL_STRATEGY):
         highlevel = HIGH_LEVEL_STRATEGY[step]
+    else:
+        highlevel = "normal"
 
     match highlevel:
         case "normal":
             print(white("strategy: name based recursive splitting, linear fallback"))
             blocks = split_by_prefixes(not_done)
-            strategy += await build_strategy_rec(step, blocks)
+            strategy += await build_strategy_rec(step, blocks, difficult=args.hard)
         case "properties":
             print(white("strategy: each property"))
-            for x in await asyncio.gather(*[build_strategy_rec(step, [prop]) for prop in not_done]):
+            for x in await asyncio.gather(*[build_strategy_rec(step, [prop], difficult=args.hard) for prop in not_done]):
                 strategy.extend(x)
         case x:
             print(red(f"ERROR: Unknown high level strategy {x}, using normal"))
             print(white("strategy: name based recursive splitting, linear fallback"))
             blocks = split_by_prefixes(not_done)
-            strategy += await build_strategy_rec(step, blocks)
+            strategy += await build_strategy_rec(step, blocks, difficult=args.hard)
 
     build_dt = time.time() - build_start
     print(gray(json.dumps(strategy)))
@@ -658,7 +631,9 @@ async def explore_mode(by_step):
         if new:
             print(gray(f"All failures to date: {failures}"))
         
-        if not new or len(strategy) != 1:
+        if args.no_run:
+            pass
+        elif not new or len(strategy) != 1:
             print(white(f"Running strategy for step {step} ({len(props)} properties)"))
             run_start = time.time()
             await run_strategy(strategy)
