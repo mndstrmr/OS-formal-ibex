@@ -1,6 +1,4 @@
 build
 jgproject
 jgproofs
-verify_*
-verify
 aig-manip/target

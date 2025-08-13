@@ -42,18 +42,19 @@ build/psgen.sv: $(PSGEN) $(PSGEN_SRCS) Makefile
 	mkdir -p build
 	$(PSGEN) $(addprefix -path ,$(PSGEN_SRCS)) $(PSGEN_FLAGS) -sv-out build/psgen.sv -tcl-out build/psgen.tcl -clocking -covers -cover-assert -step-prefix -list build/proplist.txt
 
-# FIXME: This depends on fusesoc and ibexspec
-build/all.aig: build/psgen.sv build/fusesoc build/ibexspec.sv build_all.ys $(LOWRISC_YOSYS_SLANG)
-	yosys -m $(LOWRISC_YOSYS_SLANG) -m ~/opt_muxtree/opt_muxtree_2.so -m ~/write_aiger/aiger.so -m ~/global_clock/global_clock.so -s ./build_all.ys
+build/all.aig: build/psgen.sv build/fusesoc build/ibexspec.sv build_all.ys $(LOWRISC_YOSYS_SLANG) build/yosys_formal.so
+	yosys -m $(LOWRISC_YOSYS_SLANG) -m build/yosys_formal.so -s ./build_all.ys
+
+build/yosys_formal.so: yosys_formal/global_clock.cc yosys_formal/write_aiger.cc yosys_formal/opt_muxtree.cc
+	yosys-config --build build/yosys_formal.so yosys_formal/global_clock.cc yosys_formal/write_aiger.cc yosys_formal/opt_muxtree.cc
+
+build/aig-manip: aig-manip/src/main.rs
+	cd aig-manip && cargo build --release
+	cp aig-manip/target/release/aig-manip build/
 
 .PHONY: jg
 jg: build/fusesoc build/psgen.sv build/ibexspec.sv
 	jg verify.tcl -allow_unsupported_OS -acquire_proj
-
-.PHONY: sby-prove
-sby-prove: build/preprocessed.il
-	rm -rf verify verify_step*
-	cat verify.sby | envsubst | sby --prefix `pwd`/verify $(SBY_ARGS)
 
 # The following default target is intended for regressions / unattended runs.
 .PHONY: all

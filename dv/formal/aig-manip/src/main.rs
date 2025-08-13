@@ -97,6 +97,7 @@ struct WireHierarchy<'a> {
 
 #[derive(Debug)]
 struct WireExtractionInstruction<'a> {
+    #[allow(dead_code)]
     group: &'a VMapWireGroup<'a>,
     edges: Vec<AigEdge>,
     idcode: vcd::IdCode,
@@ -134,9 +135,11 @@ impl<'a> WireHierarchy<'a> {
         }
 
         for (name, module) in &self.modules {
-            vcd.add_module(name)?;
-            module.append_to_vcd(vcd, extraction)?;
-            vcd.upscope()?;
+            if module.wires.len() != 0 || module.modules.len() != 0 {
+                vcd.add_module(name)?;
+                module.append_to_vcd(vcd, extraction)?;
+                vcd.upscope()?;
+            }
         }
         Ok(())
     }

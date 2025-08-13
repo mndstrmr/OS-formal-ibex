@@ -219,7 +219,7 @@ async def prepare_aiger(step, props):
     name = f"build/aiger-{aiger_idx}.aig"
     aiger_idx += 1
     assert (await shell(
-        f"./aig-manip/target/release/aig-manip build/all.aig select {name} build/all.ywmap {step} {' '.join(props)}",
+        f"build/aig-manip build/all.aig select {name} build/all.ywmap {step} {' '.join(props)}",
         expected_memory=0.5
     ))[0] == 0
 
@@ -250,7 +250,7 @@ def proof_done(engine_config, path, step, props, results):
             print(f"Or the following:")
             print(f"    rIC3 -e bmc --no-preproc {path} --witness | tail -n +2 > witness.aiw")
             print(f"Then to view the trace:")
-            print(f"    ./aig-manip/target/release/aig-manip {path} simulate build/all.ywmap build/all.vmap witness.aiw trace.vcd")
+            print(f"    build/aig-manip {path} simulate build/all.ywmap build/all.vmap witness.aiw trace.vcd")
             print(f"    gtkwave trace.vcd")
             return "CEX"
         case 30:

@@ -4,8 +4,6 @@ setattr -set keep 1 n:\\*
 proc
 global_clk \clk_i
 opt_muxtree_2
-opt_muxtree_2
-opt_muxtree_2
 opt_clean
 
 memory_nordff
@@ -14,9 +12,6 @@ setundef -undriven -anyseq
 delete -output
 memory_map -formal
 
-# opt -fast
-# opt -full
-opt_muxtree_2
 opt_muxtree_2
 opt_expr
 opt_dff

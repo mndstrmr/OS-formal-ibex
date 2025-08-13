@@ -193,6 +193,8 @@
               ] ++ (with pkgs; [
                 gtkwave # not stricly necesssary, but definitely useful for a dev shell
                 ric3
+                toolchain.cargo
+                toolchain.rustc
               ]);
               shellHook = exports + dev_msg + ''
                 export LOWRISC_YOSYS_SLANG=${lowrisc_yosys_slang.out}/lib/slang.so

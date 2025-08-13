@@ -126,11 +126,11 @@
     "lowrisc_yosys_slang": {
       "flake": false,
       "locked": {
-        "lastModified": 1754928905,
-        "narHash": "sha256-EZoHLWSw+DHkx01bMYJ3R451D75GMZJkZrw5m+fcmIg=",
+        "lastModified": 1755081147,
+        "narHash": "sha256-QCXxD9XqRcgP6RT/XgLMpS+C3kJWyn80XfM6KSSDKgk=",
         "ref": "formal",
-        "rev": "ada529d2d58bcafc2b8f575a6dc5f1b85b65f85d",
-        "revCount": 496,
+        "rev": "0694bc6d44ae1a91b61f2084ddfd5cde6cfa95f5",
+        "revCount": 497,
         "submodules": true,
         "type": "git",
         "url": "https://github.com/mndstrmr/yosys-slang"
