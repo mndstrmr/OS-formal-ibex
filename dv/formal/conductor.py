@@ -433,40 +433,38 @@ parser.add_argument("--no-kill", action="store_true", help="Don't kill proof pro
 args = parser.parse_args()
 
 SKIPPED_PROPS = [
-    (3, "Ibex_Memory_End_Rev"),
+    "Ibex_BecameDecodeIsEmptyWbexc",
+    "Ibex_BecameDecodeIsInstrStart",
+    "Ibex_DivInstrNotMult",
+    "Ibex_MultEndState",
 
-    (5, "Ibex_BecameDecodeIsEmptyWbexc"),
-    (5, "Ibex_BecameDecodeIsInstrStart"),
-    (5, "Ibex_DivInstrNotMult"),
-    (5, "Ibex_MultEndState"),
-
-    (6, "Ibex_MemStartFirstCycle"),
-    (6, "Ibex_FirstCycleNoGnt"),
-    (6, "Ibex_PreNextPcMatch"),
-    (6, "Ibex_NewIdFSM"),
+    "Ibex_MemStartFirstCycle",
+    "Ibex_FirstCycleNoGnt",
+    "Ibex_PreNextPcMatch",
+    "Ibex_NewIdFSM",
 
     # Just are provable, they just take too long
-    (10, 'MType_Div_PC'),
-    (10, 'MType_Rem_PC'),
-    (10, 'MType_DivU_PC'),
-    (10, 'MType_RemU_PC'),
+     'MType_Div_PC',
+     'MType_Rem_PC',
+     'MType_DivU_PC',
+     'MType_RemU_PC',
 
-    (12, 'Mem_NoMem'),
+     'Mem_NoMem',
 
     # These are not intended to be enabled, the rest are
-    (10, 'UType_Auipc_FalseCheck'),
-    (10, 'UType_Lui_FalseCheck'),
-    (10, 'MType_Div_Data'),
-    (10, 'MType_Rem_Data'),
-    (10, 'MType_Mul_Data'),
-    (10, 'MType_RemU_Data'),
-    (10, 'MType_MulH_Data'),
-    (10, 'MType_DivU_Data'),
-    (10, 'MType_MulHU_Data'),
-    (10, 'MType_MulHSH_Data'),
+     'UType_Auipc_FalseCheck',
+     'UType_Lui_FalseCheck',
+     'MType_Div_Data',
+     'MType_Rem_Data',
+     'MType_Mul_Data',
+     'MType_RemU_Data',
+     'MType_MulH_Data',
+     'MType_DivU_Data',
+     'MType_MulHU_Data',
+     'MType_MulHSH_Data',
 ]
 if len(SKIPPED_PROPS) > 0:
-    print(orange(f"WARNING: Skipped properties are {' '.join([x[1] for x in SKIPPED_PROPS])}"))
+    print(orange(f"WARNING: Skipped properties are {' '.join(SKIPPED_PROPS)}"))
 
 with open("build/all.aig", "rb") as f:
     ROOT_HASH = hashlib.new("sha256", f.read()).hexdigest()
@@ -528,6 +526,7 @@ async def info_mode(by_step, by_step_skipped):
                 unaccounted.append(prop)
         if len(unaccounted) > 0:
             print(red(f"Step {step} :: UNACCOUNTED :: :: :: {' '.join(unaccounted)}"))
+    print(f"{total_steps} proof steps in total")
 
 async def prove_mode(by_step):
     all_strategies = []
@@ -688,8 +687,8 @@ async def main():
             props.extend([(step, p) for p in missing_from(strategy, sprops)])
     elif len(props) == 0:
         props = names
-    props_skipped = [(step, p) for step, p in props if (step, p) in SKIPPED_PROPS]
-    props = [(step, p) for step, p in props if (step, p) not in SKIPPED_PROPS]
+    props_skipped = [(step, p) for step, p in props if p in SKIPPED_PROPS]
+    props = [(step, p) for step, p in props if p not in SKIPPED_PROPS]
 
     if len(props) == 0 and len(props_skipped) == 0:
         print(orange("Warning: Empty property selection"))

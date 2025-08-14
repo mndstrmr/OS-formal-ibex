@@ -126,7 +126,7 @@ lemma ibex
   # of waiting responses to the outstanding_mem signal.
   # It includes all LSU states and a couple of extra states for
   # once the instruction moves/has moved to writeback.
-  Memory: graph_induction +rev
+  Memory: graph_induction
     inv idle (
       ~`LSU.handle_misaligned_q &&
       `CR.lsu_resp_valid == outstanding_mem &&
