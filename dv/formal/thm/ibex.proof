@@ -116,6 +116,9 @@ lemma ibex
           Pc:(pc)
       have (wbexc_exists |-> spec_past_``X == wbexc_post_``X)
 
+  NoEarlyLSUErrq: have (`LSU.ls_fsm_cs == `LSU.WAIT_GNT_MIS || `LSU.ls_fsm_cs == `LSU.WAIT_RVALID_MIS |-> !`LSU.lsu_err_q)
+  InstrValidDuringLSU: have (`LSU.ls_fsm_cs != `LSU.IDLE |-> `IF.instr_valid_id_q)
+
   /
 
   # This graph induction bounds the number of waiting responses,
@@ -136,7 +139,7 @@ lemma ibex
     )
     inv wait_gnt_mis (
       $stable(data_addr_o) &&
-      ~has_resp_waiting_q && ~`LSU.lsu_err_q &&
+      ~has_resp_waiting_q &&
       (data_req_o == ~`LSU.pmp_err_q) && (`LSU.pmp_err_q == `CR.pmp_req_err[2])
     )
     inv wait_gnt (
@@ -146,7 +149,6 @@ lemma ibex
     )
     inv wait_rvalid_mis (
       ($stable(`LSU.ls_fsm_cs) -> $stable(data_addr_o)) &&
-      ~`LSU.lsu_err_q &&
       ((~`LSU.pmp_err_q && has_one_resp_waiting_q) || (`LSU.pmp_err_q && ~has_resp_waiting_q))
     )
     inv wait_rvalid_mis_gnts_done (

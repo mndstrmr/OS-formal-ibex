@@ -245,12 +245,13 @@ def proof_done(engine_config, path, step, props, results):
             print(red(f"=========================================================================================================================="))
             print(red(f"=========================================================================================================================="))
             print(red(f"=========================================================================================================================="))
+            print(red(f"One of these properties in step {step} is not valid: {' '.join(props)}"))
             print(f"To recover a witness run the following:")
             print(f"    {engine_config} {path} --witness | tail -n +2 > witness.aiw")
             print(f"Or the following:")
             print(f"    rIC3 -e bmc --no-preproc {path} --witness | tail -n +2 > witness.aiw")
             print(f"Then to view the trace:")
-            print(f"    build/aig-manip {path} simulate build/all.ywmap build/all.vmap witness.aiw trace.vcd")
+            print(f"    build/aig-manip build/all.aig simulate build/all.ywmap build/all.vmap witness.aiw trace.vcd")
             print(f"    gtkwave trace.vcd")
             return "CEX"
         case 30:
@@ -266,9 +267,9 @@ def proof_done(engine_config, path, step, props, results):
             print(red(f"Unknown Exit Code {n}: Failed to prove {len(props)} properties in step {step} ({dt:.3f}s with {mem:.3f}GB)"))
             return "UNKNOWN"
 
-async def prove(engine_config, step, props, post="", timeout=None, expected_memory=0):
+async def prove(engine_config, step, props, timeout=None, expected_memory=0):
     specialised = await prepare_aiger(step, props)
-    res = await shell(f"{engine_config} {specialised}{post}", timeout=timeout, expected_memory=expected_memory)
+    res = await shell(f"{engine_config} {specialised}", timeout=timeout, expected_memory=expected_memory)
     proof_done(engine_config, specialised, step, props, res)
     return res
 
@@ -313,7 +314,7 @@ async def build_strategy_rec(step, prop_tree, eager=False, difficult=False):
 
     if difficult:
         ENGINES = [
-            ("rIC3", 10),
+            # ("rIC3", 10),
             # ("rIC3 --no-preproc", 20),
             ("rIC3 -e kind --no-preproc", 10),
             # ("rIC3 -e kind", 10)
@@ -333,8 +334,12 @@ async def build_strategy_rec(step, prop_tree, eager=False, difficult=False):
         while True:
             res = await explore(step, all_props, timeout=1800.0 if difficult else 600.0, configs=ENGINES, debug_slow=lambda dt: print(gray(f"Still exploring step {step} property {all_props[0]} ({dt:.3f}s)")))
             if res is not None:
-                print(green(f"Constructed proof for 1 property in step {step}: {all_props[0]}"))
-                return [(step, all_props, res[0], res[1])]
+                if res[1][0] == 20:
+                    print(green(f"Constructed proof for 1 property in step {step}: {all_props[0]}"))
+                    return [(step, all_props, res[0], res[1])]
+                else:
+                    print(red(f"Failed to construct proof for 1 property in step {step}: {all_props[0]}"))
+                    return []
             print(red(f"Failed to find proof for property in step {step}: {all_props[0]} - ignoring"))
             failures.append((step, all_props[0]))
             return []
@@ -345,8 +350,11 @@ async def build_strategy_rec(step, prop_tree, eager=False, difficult=False):
     async def without_split():
         res = await explore(step, all_props, timeout=120.0, configs=ENGINES)
         if res is not None:
-            print(green(f"Constructed proof for {len(all_props)} properties in step {step}: {' '.join(all_props)}"))
-            won_race([(step, all_props, res[0], res[1])])
+            if res[1][0] == 20:
+                print(green(f"Constructed proof for {len(all_props)} properties in step {step}: {' '.join(all_props)}"))
+                won_race([(step, all_props, res[0], res[1])])
+            else:
+                print(green(f"Failed to construct proof for {len(all_props)} properties in step {step}: {' '.join(all_props)}"))
 
     async def with_split():
         children = []
@@ -379,7 +387,7 @@ async def run_strategy(strategy):
     strategy.sort(key=lambda x: x[3][2], reverse=True)
     for step in strategy:
         proofs.append(prove(step[2], step[0], step[1], expected_memory=step[3][1] * 1.1))
-    return await asyncio.gather(*proofs)
+    return list(zip(await asyncio.gather(*proofs), strategy))
 
 def split_by_prefixes(names):
     def chunk_name(name):
@@ -425,11 +433,6 @@ parser.add_argument("--no-kill", action="store_true", help="Don't kill proof pro
 args = parser.parse_args()
 
 SKIPPED_PROPS = [
-    # (1, "Ibex_SpecPastReg"),
-
-    (2, "Ibex_Memory_WaitRvalidMisGntsDone_Step_Inv"),
-    (2, "Ibex_Memory_WaitRvalidMisGntsDone_WaitRvalidMisGntsDone_Inv"),
-    
     (3, "Ibex_Memory_End_Rev"),
 
     (5, "Ibex_BecameDecodeIsEmptyWbexc"),
@@ -506,11 +509,13 @@ async def bmc_mode(props):
         i += args.bmc_step
 
 async def info_mode(by_step, by_step_skipped):
+    total_steps = 0
     for step, props in enumerate(by_step):
         strategy = load_strategy(step)
         if strategy is None:
             print(orange(f"No proof strategy entry for step {step}"))
             strategy = []
+        total_steps += len(strategy)
         accounted_for = []
         for stepi in strategy:
             print(f"Step {stepi[0]} :: {stepi[3][3]} :: {stepi[3][1]:.3f}GB/{stepi[3][2]:.3f}s :: {stepi[2]} :: {' '.join(stepi[1])}")
@@ -547,9 +552,17 @@ async def prove_mode(by_step):
     if not args.by_step:
         print(white(f"Running strategy for everything"))
         run_start = time.time()
-        await run_strategy(all_strategies)
+        results = await run_strategy(all_strategies)
         run_dt = time.time() - run_start
         print(white(f"Ran strategy in {run_dt:.3f}s"))
+
+        unsats = 0
+        for res, step in results:
+            if res[0] == 20:
+                unsats += 1
+            else:
+                print(red(f"Failed to prove step {step[0]} proof step with code {res[0]} (see above, or logfile.txt, for more details): {' '.join(step[1])}"))
+        print(white(f"{unsats}/{len(all_strategies)} proofs steps were UNSAT"))
 
 async def construct_strategy(step, props):
     strategy = load_strategy(step) or []

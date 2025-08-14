@@ -38,11 +38,15 @@ build/ibexspec.sv: $(SAIL) $(SAIL_SRCS) $(SAIL_EXTRA_SRCS) Sources.mk Makefile s
 	cd build && $(SAIL) $(SAIL_SRCS) $(addprefix ../,$(SAIL_EXTRA_SRCS)) $(SAIL_SV_FLAGS) $(addprefix -sv_unreachable execute_,$(COMPRESSED_INSTRS)) -o ibexspec
 	python3 spec/fix_bugs.py
 
-build/psgen.sv: $(PSGEN) $(PSGEN_SRCS) Makefile
+build/psgen-jg.sv: $(PSGEN) $(PSGEN_SRCS) Makefile
 	mkdir -p build
-	$(PSGEN) $(addprefix -path ,$(PSGEN_SRCS)) $(PSGEN_FLAGS) -sv-out build/psgen.sv -tcl-out build/psgen.tcl -clocking -covers -cover-assert -step-prefix -list build/proplist.txt
+	$(PSGEN) $(addprefix -path ,$(PSGEN_SRCS)) $(PSGEN_FLAGS) -sv-out build/psgen-jg.sv -tcl-out build/psgen.tcl
 
-build/all.aig: build/psgen.sv build/fusesoc build/ibexspec.sv check build_all.ys $(LOWRISC_YOSYS_SLANG) build/yosys_formal.so
+build/psgen-yosys.sv: $(PSGEN) $(PSGEN_SRCS) Makefile
+	mkdir -p build
+	$(PSGEN) $(addprefix -path ,$(PSGEN_SRCS)) $(PSGEN_FLAGS) -sv-out build/psgen-yosys.sv -tcl-out build/psgen.tcl -clocking -covers -cover-assert -step-prefix
+
+build/all.aig: build/psgen-yosys.sv build/fusesoc build/ibexspec.sv check build_all.ys $(LOWRISC_YOSYS_SLANG) build/yosys_formal.so
 	yosys -m $(LOWRISC_YOSYS_SLANG) -m build/yosys_formal.so -v 1 -s <(cat ./build_all.ys | sed "s|LOWRISC_SAIL_SRC|$(LOWRISC_SAIL_SRC)|g")
 
 build/yosys_formal.so: yosys_formal/global_clock.cc yosys_formal/write_aiger.cc yosys_formal/opt_muxtree.cc
@@ -53,12 +57,12 @@ build/aig-manip: aig-manip/src/main.rs
 	cp aig-manip/target/release/aig-manip build/
 
 .PHONY: jg
-jg: build/fusesoc build/psgen.sv build/ibexspec.sv
+jg: build/fusesoc build/psgen-jg.sv build/ibexspec.sv
 	jg verify.tcl -allow_unsupported_OS -acquire_proj
 
 # The following default target is intended for regressions / unattended runs.
 .PHONY: all
-all: fusesoc psgen sv
+all: build/fusesoc build/psgen-jg.sv build/ibexspec.sv
 	jg verify.tcl -allow_unsupported_OS -acquire_proj -no_gui --- "prove_no_liveness"
 
 ################################################################################
@@ -67,5 +71,4 @@ all: fusesoc psgen sv
 clean:
 	rm -rf build/
 	rm -rf jgproject/ jgproofs/
-	rm -rf verify/ verify_step*
 

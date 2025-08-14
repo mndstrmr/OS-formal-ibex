@@ -45,9 +45,7 @@ module top import ibex_pkg::*; #(
   // Clock and Reset
   input  logic                         clk_i,
 
-  // Symbiosis doesn't really have any knowledge or understanding of reset signals,
-  // so we implement them ourselves (see below).
-  `ifndef SYMBIOSIS
+  `ifndef YOSYS
   input  logic                         rst_ni,
   `endif
 
@@ -111,7 +109,7 @@ module top import ibex_pkg::*; #(
 );
 
 // Create our reset signal for symbiosis
-`ifdef SYMBIOSIS
+`ifdef YOSYS
 logic rst_ni;
 initial rst_ni = 1'b0;
 always @(posedge clk_i) rst_ni = 1'b1;
@@ -491,7 +489,11 @@ mem_assume_t data_mem_assume(
 
 ////////////////////// Proof //////////////////////
 `define INSTR wbexc_decompressed_instr
-`include "../build/psgen.sv"
+`ifdef YOSYS
+`include "../build/psgen-yosys.sv"
+`else
+`include "../build/psgen-jg.sv"
+`endif
 `undef INSTR
 
 // Assign spec fetch error after instantiating the specification.

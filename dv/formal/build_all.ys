@@ -1,5 +1,5 @@
 # FIXME: Fix nix hash
-read_slang --top top -DSYNTHESIS -DSYMBIOSIS -DNO_PROPS -F slang.scr -I LOWRISC_SAIL_SRC/lib/sv/ --single-unit --no-proc
+read_slang --top top -DSYNTHESIS -DYOSYS -F slang.scr -I LOWRISC_SAIL_SRC/lib/sv/ --single-unit --no-proc
 setattr -set keep 1 n:\\*
 proc
 global_clk \clk_i
