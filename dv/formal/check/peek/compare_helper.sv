@@ -30,6 +30,7 @@ assign ex_is_jump = `IS_JAL | `IS_JALR;
 assign ex_is_wfi = `IS_WFI;
 assign ex_is_rtype = `IS_ADD | `IS_SUB | `IS_SLL | `IS_SLT | `IS_SLTU | `IS_XOR | `IS_SRL | `IS_SRA | `IS_OR | `IS_AND;
 assign ex_is_div = `IS_DIV | `IS_DIVU | `IS_REM | `IS_REMU;
+assign ex_is_mtype = ex_is_div | `IS_MUL | `IS_MULH | `IS_MULHSH | `IS_MULHU;
 `undef INSTR
 
 // real_write checks that there is a write and the dest reg is not x0

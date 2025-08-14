@@ -433,35 +433,21 @@ parser.add_argument("--no-kill", action="store_true", help="Don't kill proof pro
 args = parser.parse_args()
 
 SKIPPED_PROPS = [
-    "Ibex_BecameDecodeIsEmptyWbexc",
-    "Ibex_BecameDecodeIsInstrStart",
-    "Ibex_DivInstrNotMult",
-    "Ibex_MultEndState",
-
-    "Ibex_MemStartFirstCycle",
-    "Ibex_FirstCycleNoGnt",
-    "Ibex_PreNextPcMatch",
-    "Ibex_NewIdFSM",
-
     # Just are provable, they just take too long
-     'MType_Div_PC',
-     'MType_Rem_PC',
-     'MType_DivU_PC',
-     'MType_RemU_PC',
-
-     'Mem_NoMem',
+    # 'MType_Div_PC',
+    # 'MType_Rem_PC',
+    # 'MType_DivU_PC',
+    # 'MType_RemU_PC',
 
     # These are not intended to be enabled, the rest are
-     'UType_Auipc_FalseCheck',
-     'UType_Lui_FalseCheck',
-     'MType_Div_Data',
-     'MType_Rem_Data',
-     'MType_Mul_Data',
-     'MType_RemU_Data',
-     'MType_MulH_Data',
-     'MType_DivU_Data',
-     'MType_MulHU_Data',
-     'MType_MulHSH_Data',
+    'MType_Div_Data',
+    'MType_Rem_Data',
+    'MType_Mul_Data',
+    'MType_RemU_Data',
+    'MType_MulH_Data',
+    'MType_DivU_Data',
+    'MType_MulHU_Data',
+    'MType_MulHSH_Data',
 ]
 if len(SKIPPED_PROPS) > 0:
     print(orange(f"WARNING: Skipped properties are {' '.join(SKIPPED_PROPS)}"))

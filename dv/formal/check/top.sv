@@ -207,7 +207,7 @@ logic [31:0] pre_mip;
 //  - ex_P is 1 if P is true for the instruction in the ID/EX stage.
 //  - wbexc_P is 1 if P is true for the instruction in the WB/EXC (exception) stage.
 
-logic ex_is_wfi, ex_is_rtype, ex_is_div;
+logic ex_is_wfi, ex_is_rtype, ex_is_div, ex_is_mtype;
 logic ex_is_btype, ex_is_jump;
 logic ex_is_mem_instr, ex_is_load_instr, ex_is_store_instr;
 
