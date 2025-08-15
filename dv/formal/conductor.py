@@ -433,13 +433,6 @@ parser.add_argument("--no-kill", action="store_true", help="Don't kill proof pro
 args = parser.parse_args()
 
 SKIPPED_PROPS = [
-    # Just are provable, they just take too long
-    # 'MType_Div_PC',
-    # 'MType_Rem_PC',
-    # 'MType_DivU_PC',
-    # 'MType_RemU_PC',
-
-    # These are not intended to be enabled, the rest are
     'MType_Div_Data',
     'MType_Rem_Data',
     'MType_Mul_Data',
