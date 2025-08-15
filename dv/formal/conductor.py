@@ -14,15 +14,18 @@ import hashlib
 
 # --------------------- Utilities ----------------------
 
+PROOFLOG = os.environ["PROOFLOG"] if "PROOFLOG" in os.environ else "prooflog.txt"
+LOGFILE = os.environ["LOGFILE"] if "LOGFILE" in os.environ else "logfile.txt"
+
 oldprint = print
 def print(*args):
     timestr = datetime.now().strftime('[%d/%m/%y %H:%M:%S.%f]')
     oldprint(gray(timestr), *args)
     if not "NO_LOG" in os.environ:
-        with open("logfile.txt", "a") as f:
+        with open(LOGFILE, "a") as f:
             oldprint(timestr, *[re.sub("\033\\[[0-9;]+m", "", str(x)) for x in args], file=f)
 if not "NO_LOG" in os.environ:
-    with open("logfile.txt", "a") as f:
+    with open(LOGFILE, "a") as f:
         f.write("\n")
 
 def green(s): return f"\033[32;1m{s}\033[0m"
@@ -230,7 +233,7 @@ def proof_done(engine_config, path, step, props, results):
     mem = results[1] or 0.0
     dt = results[2] or 0.0
     if not "NO_LOG" in os.environ:
-        with open("prooflog.txt", "a") as f:
+        with open(PROOFLOG, "a") as f:
             json.dump([time.time(), [props, step, ROOT_HASH, engine_config], results], f)
             f.write("\n")
     match code:
@@ -386,7 +389,14 @@ async def run_strategy(strategy):
     proofs = []
     strategy.sort(key=lambda x: x[3][2], reverse=True)
     for step in strategy:
-        proofs.append(prove(step[2], step[0], step[1], expected_memory=step[3][1] * 1.1))
+        conf = step[2]
+        if len(step[3]) >= 6:
+            stderr = step[3][5]
+            if " -e kind " in step[2]:
+                s = stderr.split("[INFO ] k-induction proofed in depth ")
+                if len(s) == 2:
+                    conf += f" --start {int(s[1].strip())}"
+        proofs.append(prove(conf, step[0], step[1], expected_memory=step[3][1] * 1.1))
     return list(zip(await asyncio.gather(*proofs), strategy))
 
 def split_by_prefixes(names):
@@ -418,7 +428,13 @@ def split_by_prefixes(names):
 # ---------------------------------- Main ------------------------------
 
 parser = argparse.ArgumentParser(prog="conductor.py", description="Constructs and executes proofs.")
-parser.add_argument("mode", choices=["prove", "explore", "bmc", "info"], help="Proof mode. prove will run existing proofs where they exist, explore will attempt to discover new proofs, bmc will run BMC on each property individually, info dumps stats about cached proofs.")
+parser.add_argument("mode", choices=["prove", "explore", "bmc", "info", "logopt"],
+                    help="Proof mode. "
+                    "prove will run existing proofs where they exist, "
+                    "explore will attempt to discover new proofs, "
+                    "bmc will run BMC on each property individually, "
+                    "info dumps stats about cached proofs, "
+                    "logopt extracts information (e.g. the k for k-induction) to help optimise proofs.")
 parser.add_argument("--fresh", action="store_true", help="In explore mode, do not use already constructed proofs, always construct new proofs.")
 parser.add_argument("--no-store", action="store_true", help="In explore mode, do not store constructed proof strategies.")
 parser.add_argument("--by-step", action="store_true", help="In prove mode, do proofs one step at a time")
@@ -462,6 +478,16 @@ def load_strategy(step):
         print(red(f"Error decoding step{step}.json (ignoring): {e}"))
     return None
 
+def store_strategy(step, strategy):
+    if args.no_store:
+        return
+    try:
+        os.makedirs("strategies", exist_ok=True)
+        with open(f"strategies/step{step}.json", "w") as f:
+            json.dump(strategy, f)
+    except Exception as e:
+        print(red(f"ERROR: Could not save strategy: {e}"))
+    
 def missing_from(strategy, props):
     done_props = []
     for strategy_step in strategy:
@@ -591,13 +617,7 @@ async def construct_strategy(step, props):
     print(gray(json.dumps(strategy)))
     strategy = json.loads(json.dumps(strategy)) # Normalize, just in case, so that this run in is the same as the rest
     print(white(f"Constructed strategy for step {step} of {len(strategy)} proof steps in {build_dt:.3f}s"))
-    if not args.no_store:
-        try:
-            os.makedirs("strategies", exist_ok=True)
-            with open(f"strategies/step{step}.json", "w") as f:
-                json.dump(strategy, f)
-        except Exception as e:
-            print(red(f"ERROR: Could not save strategy: {e}"))
+    store_strategy(step, strategy)
     return True, strategy
 
 async def explore_mode(by_step):
@@ -620,6 +640,43 @@ async def explore_mode(by_step):
             print(white(f"Ran strategy for step {step} in {run_dt:.3f}s"))
         else:
             print(white(f"Skipping proof run for step {step}, since it has just one step"))         
+
+async def logopt(by_step):
+    log = []
+    with open(PROOFLOG, "r") as f:
+        for line in f:
+            log.append(json.loads(line))
+    mapping = {}
+    for entry in log:
+        # Validate, since the format of these entries has changed
+        if len(entry) != 3 or type(entry[0]) != float or type(entry[1]) != list or type(entry[2]) != list:
+            continue
+        [t, ins, outs] = entry
+        if len(ins) != 4 or type(ins[0]) != list or type(ins[1]) != int or type(ins[2]) != str or type(ins[3]) != str:
+            continue
+        [props, step, sha, config] = ins
+        if len(outs) != 6 or type(outs[0]) != int or type(outs[1]) != float or type(outs[2]) != float or type(outs[3]) != str or type(outs[4]) != str or type(outs[4]) != str:
+            print("ERR 2")
+            continue
+        [code, mem, dt, kind, stdout, stderr] = outs
+        props.sort()
+        k = (tuple(props), step, config)
+        mapping[k] = (code, mem, dt, kind, stdout, stderr)
+    print(len(mapping), "log results")
+    
+    for step, props in enumerate(by_step):
+        strategy = load_strategy(step)
+        if strategy is None:
+            print(orange(f"No proof strategy entry for step {step}"))
+            strategy = []
+        for sstep in strategy:
+            if len(sstep) != 4:
+                continue
+            props.sort()
+            [step, props, config, res] = sstep
+            if (tuple(props), step, config) in mapping:
+                sstep[3] = mapping[(tuple(props), step, config)]
+        store_strategy(step, strategy)
 
 async def main():
     def preproc_name(name):
@@ -684,6 +741,8 @@ async def main():
             await prove_mode(by_step)
         case "explore":
             await explore_mode(by_step)
+        case "logopt":
+            await logopt(by_step)
         
 
 asyncio.run(main())
