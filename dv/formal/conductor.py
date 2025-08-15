@@ -231,7 +231,7 @@ def proof_done(engine_config, path, step, props, results):
     dt = results[2] or 0.0
     if not "NO_LOG" in os.environ:
         with open("prooflog.txt", "a") as f:
-            json.dump([time.time(), props, step, code, mem, dt, ROOT_HASH, engine_config], f)
+            json.dump([time.time(), [props, step, ROOT_HASH, engine_config], results], f)
             f.write("\n")
     match code:
         case 20:
