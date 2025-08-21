@@ -44,7 +44,10 @@ module top import ibex_pkg::*; #(
 ) (
   // Clock and Reset
   input  logic                         clk_i,
+
+  `ifndef YOSYS
   input  logic                         rst_ni,
+  `endif
 
   input  logic                         test_en_i,     // enable all clock gates for testing
   input  prim_ram_1p_pkg::ram_1p_cfg_t ram_cfg_i,
@@ -104,6 +107,14 @@ module top import ibex_pkg::*; #(
   // DFT bypass controls
   input logic                          scan_rst_ni
 );
+
+// Yosys based tools have no inherent understanding of a reset signal (unlike jasper, which has the
+// `reset` TCL command). We must therefore introduce one ourselves using an initial block.
+`ifdef YOSYS
+logic rst_ni;
+initial rst_ni = 1'b0;
+always @(posedge clk_i) rst_ni = 1'b1;
+`endif
 
 localparam logic [31:0] CSR_MVENDORID_VALUE = 32'b0;
 localparam logic [31:0] CSR_MIMPID_VALUE = 32'b0;
@@ -479,7 +490,11 @@ mem_assume_t data_mem_assume(
 
 ////////////////////// Proof //////////////////////
 `define INSTR wbexc_decompressed_instr
-`include "../build/psgen.sv"
+`ifdef YOSYS
+`include "../build/psgen-yosys.sv"
+`else
+`include "../build/psgen-jg.sv"
+`endif
 `undef INSTR
 
 // Assign spec fetch error after instantiating the specification.
