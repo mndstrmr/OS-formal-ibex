@@ -12,12 +12,39 @@ on:
       - '*'
 
 jobs:
+  # Just detect changes to decide what to run
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      formal: ${{ steps.filter.outputs.formal }}
+      lean: ${{ steps.filter.outputs.lean }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            formal:
+              - 'rtl/**'
+              - 'vendor/**'
+              - 'dv/formal/**'
+              - '**/*.nix'
+              - '.github/**'
+            lean:
+              - 'dv/formal/ObservationalCorrectness/**'
+              - '.github/**'
+
   fv:
     name: Run the Open-Source FV flow
     runs-on: nixos
     concurrency:
       group: oss-fv
       cancel-in-progress: false # Only do one oss-fv job at a time, since we will use a huge amount of memory
+    needs: changes
+    if: ${{ needs.changes.outputs.formal == 'true' }}
     steps:
       - name: Notify about queued execution
         run: |
@@ -45,3 +72,14 @@ jobs:
           make build/all.aig SHELL=bash
           python3 conductor.py prove --check-complete
 
+  lean:
+    name: Check the Lean ObservationalCorrectness proof
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.lean == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: "dv/formal/ObservationalCorrectness"

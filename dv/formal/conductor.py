@@ -641,7 +641,7 @@ async def prove_mode(all_props: list[tuple[int, str]], by_step: list[list[str]])
             await run_strategy(strategy)
             run_dt = time.time() - run_start
             log(f"Ran strategy for step {step} in {run_dt:.3f}s", c=white)
-        all_strategies.extend(strategy)
+        all_strategies.extend(s for s in strategy if not all(x not in props for x in s.props))
 
     if args.check_complete:
         covered = set()
