@@ -592,7 +592,7 @@ async def prove_mode(all_props, by_step):
             await run_strategy(strategy)
             run_dt = time.time() - run_start
             print(white(f"Ran strategy for step {step} in {run_dt:.3f}s"))
-        all_strategies.extend(strategy)
+        all_strategies.extend(s for s in strategy if not all(x not in props for x in s[1]))
 
     if args.check_complete:
         covered = set()

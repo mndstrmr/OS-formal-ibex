@@ -179,8 +179,8 @@ lemma riscv
 
   Mem:
   block
-    En: have (data_req_o |-> spec_mem_en)
-    SndEn: have (mem_req_snd_d |-> spec_mem_en_snd)
+    En: have (mem_req_fst_d | mem_gnt_fst_d |-> spec_mem_en)
+    SndEn: have (mem_req_snd_d | mem_gnt_snd_d |-> spec_mem_en_snd)
 
     We: have (data_req_o |-> data_we_o == spec_mem_write && data_we_o == ~spec_mem_read)
 
@@ -189,6 +189,9 @@ lemma riscv
 
     FstWData: have (mem_req_fst_d & data_we_o |-> (spec_mem_write_fst_wdata & fst_mask) == (data_wdata_o & fst_mask))
     SndWData: have (mem_req_snd_d & data_we_o |-> (spec_mem_write_snd_wdata & snd_mask) == (data_wdata_o & snd_mask))
+
+    FstBE: have (mem_req_fst_d & data_we_o |-> spec_mem_write_fst_be == data_be_o)
+    SndBE: have (mem_req_snd_d & data_we_o |-> spec_mem_write_snd_be == data_be_o)
 
     FstEnd: have (spec_en & spec_mem_en |-> mem_gnt_fst_d)
     SndEnd: have (spec_en & spec_mem_en_snd |-> mem_gnt_snd_d)

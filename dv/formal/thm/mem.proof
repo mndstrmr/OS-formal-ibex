@@ -95,7 +95,7 @@ lemma mem
   LSUEarlyRequestSplit: have (early_resp |-> has_snd_req)
   LSUHold: have (data_req_o & ~data_gnt_i |=> data_addr_o == $past(data_addr_o) && data_we_o == $past(data_we_o))
   LSUHoldWrite: have (data_req_o & ~data_gnt_i & data_we_o |=> data_be_o == $past(data_be_o) && data_wdata_o == $past(data_wdata_o))
-  LSUMaxTwoReqs: have (mem_gnt_snd_q |-> ~data_gnt_i)
+  LSUMaxTwoReqs: have (mem_gnt_snd_q |-> ~data_req_o)
   LSU2ndReqStep: have (data_req_o & $past(data_gnt_i) & ~$past(instr_will_progress) |-> data_we_o == $past(data_we_o) && data_addr_o == $past(data_addr_o) + 4)
   LSUInternalHold: have (`LSU.data_req_o && ~data_gnt_i && ~`LSU.pmp_err_q |=> $stable(data_addr_o))
 

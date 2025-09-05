@@ -8,29 +8,46 @@ name: Ibex OSS Formal CI
 
 on:
   push:
-    paths:
-      - 'flake.nix'
-      - 'flake.lock'
-      - 'dv/formal/**'
-      - 'rtl/**'
-      - 'vendor/**'
-      - '.github/**'
+    branches:
+      - '*'
   merge_group:
     types:
       - checks_requested
   pull_request:
-    paths:
-      - 'flake.nix'
-      - 'flake.lock'
-      - 'dv/formal/**'
-      - 'rtl/**'
-      - 'vendor/**'
-      - '.github/**'
+    branches:
+      - '*'
 
 jobs:
+  # Just detect changes to decide what to run
+  changes:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      formal: ${{ steps.filter.outputs.formal }}
+      lean: ${{ steps.filter.outputs.lean }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            formal:
+              - 'rtl/**'
+              - 'vendor/**'
+              - 'dv/formal/**'
+              - '**/*.nix'
+              - '.github/**'
+            lean:
+              - 'dv/formal/ObservationalCorrectness/**'
+              - '.github/**'
+
   fv:
     name: Run the Open-Source FV flow
     runs-on: nixos
+    needs: changes
+    if: ${{ needs.changes.outputs.formal == 'true' }}
     steps:
       - uses: actions/checkout@v4
 
@@ -55,3 +72,14 @@ jobs:
           python3 conductor.py prove --check-complete
           # add --max-mem <gb> to restrict to some upper bound on memory usage. Hard minimum is 20 but 128 is a more realistic minimum
 
+  lean:
+    name: Check the Lean ObservationalCorrectness proof
+    runs-on: ubuntu-latest
+    needs: changes
+    if: ${{ needs.changes.outputs.lean == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: "dv/formal/ObservationalCorrectness"
